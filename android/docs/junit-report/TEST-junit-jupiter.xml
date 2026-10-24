@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="JUnit Jupiter" tests="20" skipped="0" failures="0" errors="0" time="0.199" hostname="hds-ia8w6u0hkqm6" timestamp="2026-10-20T08:39:34">
+<properties>
+<property name="file.encoding" value="UTF-8"/>
+<property name="file.separator" value="/"/>
+<property name="java.class.path" value="/tmp/junit-console.jar"/>
+<property name="java.class.version" value="61.0"/>
+<property name="java.home" value="/usr/lib/jvm/java-17-openjdk-amd64"/>
+<property name="java.io.tmpdir" value="/tmp"/>
+<property name="java.library.path" value="/usr/java/packages/lib:/usr/lib/x86_64-linux-gnu/jni:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/usr/lib/jni:/lib:/usr/lib"/>
+<property name="java.runtime.name" value="OpenJDK Runtime Environment"/>
+<property name="java.runtime.version" value="17.0.20.1+1-1-deb12u1-Debian"/>
+<property name="java.specification.maintenance.version" value="1"/>
+<property name="java.specification.name" value="Java Platform API Specification"/>
+<property name="java.specification.vendor" value="Oracle Corporation"/>
+<property name="java.specification.version" value="17"/>
+<property name="java.vendor" value="Debian"/>
+<property name="java.vendor.url" value="https://tracker.debian.org/openjdk-17"/>
+<property name="java.vendor.url.bug" value="https://bugs.debian.org/openjdk-17"/>
+<property name="java.version" value="17.0.20.1"/>
+<property name="java.version.date" value="2026-08-18"/>
+<property name="java.vm.compressedOopsMode" value="32-bit"/>
+<property name="java.vm.info" value="mixed mode, sharing"/>
+<property name="java.vm.name" value="OpenJDK 64-Bit Server VM"/>
+<property name="java.vm.specification.name" value="Java Virtual Machine Specification"/>
+<property name="java.vm.specification.vendor" value="Oracle Corporation"/>
+<property name="java.vm.specification.version" value="17"/>
+<property name="java.vm.vendor" value="Debian"/>
+<property name="java.vm.version" value="17.0.20.1+1-1-deb12u1-Debian"/>
+<property name="jdk.debug" value="release"/>
+<property name="line.separator" value="
+"/>
+<property name="native.encoding" value="UTF-8"/>
+<property name="os.arch" value="amd64"/>
+<property name="os.name" value="Linux"/>
+<property name="os.version" value="6.12.8+"/>
+<property name="path.separator" value=":"/>
+<property name="sun.arch.data.model" value="64"/>
+<property name="sun.boot.library.path" value="/usr/lib/jvm/java-17-openjdk-amd64/lib"/>
+<property name="sun.cpu.endian" value="little"/>
+<property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
+<property name="sun.java.command" value="/tmp/junit-console.jar -cp /workspace/android/core/build/classes/kotlin/main:/workspace/android/core/build/classes/kotlin/test:/root/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/2.0.21/618b539767b4899b4660a83006e052b63f1db551/kotlin-stdlib-2.0.21.jar:/root/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-test/2.0.21/c6ea143e356327ddfda57e53e829c553e3b45b64/kotlin-test-2.0.21.jar --scan-classpath --disable-banner --details=tree --reports-dir=/workspace/android/docs/junit-report"/>
+<property name="sun.java.launcher" value="SUN_STANDARD"/>
+<property name="sun.jnu.encoding" value="UTF-8"/>
+<property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
+<property name="user.dir" value="/workspace/android"/>
+<property name="user.home" value="/root"/>
+<property name="user.language" value="en"/>
+<property name="user.name" value="root"/>
+<property name="user.timezone" value="Etc/UTC"/>
+</properties>
+<testcase name="repeatedVerifiedAndConvertMarksAreIdempotent()" classname="com.videomover.machine.MoveStateMachineTest" time="0.002">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.machine.MoveStateMachineTest]/[method:repeatedVerifiedAndConvertMarksAreIdempotent()]
+display-name: repeatedVerifiedAndConvertMarksAreIdempotent()
+]]></system-out>
+</testcase>
+<testcase name="happyPathIsMoveThenDeleteThenConvert()" classname="com.videomover.machine.MoveStateMachineTest" time="0">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.machine.MoveStateMachineTest]/[method:happyPathIsMoveThenDeleteThenConvert()]
+display-name: happyPathIsMoveThenDeleteThenConvert()
+]]></system-out>
+</testcase>
+<testcase name="attentionPausesOneFileAndResumesTheSameState()" classname="com.videomover.machine.MoveStateMachineTest" time="0">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.machine.MoveStateMachineTest]/[method:attentionPausesOneFileAndResumesTheSameState()]
+display-name: attentionPausesOneFileAndResumesTheSameState()
+]]></system-out>
+</testcase>
+<testcase name="productAllowsOnlyMoveAndTwoResolutions()" classname="com.videomover.machine.MoveStateMachineTest" time="0">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.machine.MoveStateMachineTest]/[method:productAllowsOnlyMoveAndTwoResolutions()]
+display-name: productAllowsOnlyMoveAndTwoResolutions()
+]]></system-out>
+</testcase>
+<testcase name="tieBreakIsStableById()" classname="com.videomover.library.VideoLibraryTest" time="0.003">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.library.VideoLibraryTest]/[method:tieBreakIsStableById()]
+display-name: tieBreakIsStableById()
+]]></system-out>
+</testcase>
+<testcase name="unknownNumbersStayLastInBothDirections()" classname="com.videomover.library.VideoLibraryTest" time="0">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.library.VideoLibraryTest]/[method:unknownNumbersStayLastInBothDirections()]
+display-name: unknownNumbersStayLastInBothDirections()
+]]></system-out>
+</testcase>
+<testcase name="toggleAndDeselect()" classname="com.videomover.library.VideoLibraryTest" time="0">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.library.VideoLibraryTest]/[method:toggleAndDeselect()]
+display-name: toggleAndDeselect()
+]]></system-out>
+</testcase>
+<testcase name="formatsSizeAndDuration()" classname="com.videomover.library.VideoLibraryTest" time="0.01">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.library.VideoLibraryTest]/[method:formatsSizeAndDuration()]
+display-name: formatsSizeAndDuration()
+]]></system-out>
+</testcase>
+<testcase name="failedDeleteKeepsBothCopiesAndDoesNotAutoRetry()" classname="com.videomover.machine.MoveStateMachineTest" time="0">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.machine.MoveStateMachineTest]/[method:failedDeleteKeepsBothCopiesAndDoesNotAutoRetry()]
+display-name: failedDeleteKeepsBothCopiesAndDoesNotAutoRetry()
+]]></system-out>
+</testcase>
+<testcase name="retryAfterConversionFailureDoesNotTransferOrDeleteAgain()" classname="com.videomover.machine.MoveStateMachineTest" time="0">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.machine.MoveStateMachineTest]/[method:retryAfterConversionFailureDoesNotTransferOrDeleteAgain()]
+display-name: retryAfterConversionFailureDoesNotTransferOrDeleteAgain()
+]]></system-out>
+</testcase>
+<testcase name="retryAfterTransferFailureStartsOverWithoutADelete()" classname="com.videomover.machine.MoveStateMachineTest" time="0.076">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.machine.MoveStateMachineTest]/[method:retryAfterTransferFailureStartsOverWithoutADelete()]
+display-name: retryAfterTransferFailureStartsOverWithoutADelete()
+]]></system-out>
+</testcase>
+<testcase name="sourceIsNeverDeletedTwiceOrBeforeVerification()" classname="com.videomover.machine.MoveStateMachineTest" time="0">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.machine.MoveStateMachineTest]/[method:sourceIsNeverDeletedTwiceOrBeforeVerification()]
+display-name: sourceIsNeverDeletedTwiceOrBeforeVerification()
+]]></system-out>
+</testcase>
+<testcase name="cancelDoesNotImplyDeletion()" classname="com.videomover.machine.MoveStateMachineTest" time="0">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.machine.MoveStateMachineTest]/[method:cancelDoesNotImplyDeletion()]
+display-name: cancelDoesNotImplyDeletion()
+]]></system-out>
+</testcase>
+<testcase name="sortsByNameSizeDateAndDuration()" classname="com.videomover.library.VideoLibraryTest" time="0.003">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.library.VideoLibraryTest]/[method:sortsByNameSizeDateAndDuration()]
+display-name: sortsByNameSizeDateAndDuration()
+]]></system-out>
+</testcase>
+<testcase name="millisecondDatesAndPossibleDuplicates()" classname="com.videomover.library.VideoLibraryTest" time="0.003">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.library.VideoLibraryTest]/[method:millisecondDatesAndPossibleDuplicates()]
+display-name: millisecondDatesAndPossibleDuplicates()
+]]></system-out>
+</testcase>
+<testcase name="cannotSkipAhead()" classname="com.videomover.machine.MoveStateMachineTest" time="0.001">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.machine.MoveStateMachineTest]/[method:cannotSkipAhead()]
+display-name: cannotSkipAhead()
+]]></system-out>
+</testcase>
+<testcase name="selectAllVisibleKeepsHiddenSelectionAndSkipsInaccessible()" classname="com.videomover.library.VideoLibraryTest" time="0.031">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.library.VideoLibraryTest]/[method:selectAllVisibleKeepsHiddenSelectionAndSkipsInaccessible()]
+display-name: selectAllVisibleKeepsHiddenSelectionAndSkipsInaccessible()
+]]></system-out>
+</testcase>
+<testcase name="duplicateUrisCollapseToTheRicherRow()" classname="com.videomover.library.VideoLibraryTest" time="0.001">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.library.VideoLibraryTest]/[method:duplicateUrisCollapseToTheRicherRow()]
+display-name: duplicateUrisCollapseToTheRicherRow()
+]]></system-out>
+</testcase>
+<testcase name="emptyUriIsDroppedAndBadMetadataDoesNotThrow()" classname="com.videomover.library.VideoLibraryTest" time="0">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.library.VideoLibraryTest]/[method:emptyUriIsDroppedAndBadMetadataDoesNotThrow()]
+display-name: emptyUriIsDroppedAndBadMetadataDoesNotThrow()
+]]></system-out>
+</testcase>
+<testcase name="searchMatchesFilenameOnlyAndIgnoresCase()" classname="com.videomover.library.VideoLibraryTest" time="0.001">
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]/[class:com.videomover.library.VideoLibraryTest]/[method:searchMatchesFilenameOnlyAndIgnoresCase()]
+display-name: searchMatchesFilenameOnlyAndIgnoresCase()
+]]></system-out>
+</testcase>
+<system-out><![CDATA[
+unique-id: [engine:junit-jupiter]
+display-name: JUnit Jupiter
+]]></system-out>
+</testsuite>

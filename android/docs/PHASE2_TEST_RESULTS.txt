@@ -1,0 +1,52 @@
+Phase 2 unit tests
+Date: 2026-10-20
+
+Command 1
+  ./gradlew :core:test -PskipApp=true
+  (run as: gradle 8.11.1 :core:test -PskipApp=true --no-daemon)
+
+Result: BUILD FAILED
+:core:test FAILED
+Execution failed for task ':core:test'.
+Process 'Gradle Test Executor 1' finished with non-zero exit value 1.
+Cause in this environment: the test worker could not connect to 127.0.0.1
+(Connection refused). The daemon log also reports
+"Unexpected type tag 71" while reading its local socket.
+No test method ran under Gradle. Compilation of main and test sources succeeded.
+
+Command 2
+  java -jar junit-platform-console-standalone-1.10.1.jar
+    -cp core/build/classes/kotlin/main:core/build/classes/kotlin/test:kotlin-stdlib-2.0.21.jar:kotlin-test-2.0.21.jar
+    --scan-classpath --details=tree
+
+These are the class files produced by the Gradle compile above.
+Re-run after the final test source edit.
+
+JUnit Jupiter
+  MoveStateMachineTest
+    retryAfterTransferFailureStartsOverWithoutADelete          PASS
+    retryAfterConversionFailureDoesNotTransferOrDeleteAgain   PASS
+    attentionPausesOneFileAndResumesTheSameState               PASS
+    repeatedVerifiedAndConvertMarksAreIdempotent               PASS
+    cannotSkipAhead                                            PASS
+    failedDeleteKeepsBothCopiesAndDoesNotAutoRetry             PASS
+    productAllowsOnlyMoveAndTwoResolutions                     PASS
+    happyPathIsMoveThenDeleteThenConvert                       PASS
+    sourceIsNeverDeletedTwiceOrBeforeVerification              PASS
+    cancelDoesNotImplyDeletion                                 PASS
+  VideoLibraryTest
+    selectAllVisibleKeepsHiddenSelectionAndSkipsInaccessible   PASS
+    tieBreakIsStableById                                       PASS
+    formatsSizeAndDuration                                     PASS
+    duplicateUrisCollapseToTheRicherRow                        PASS
+    toggleAndDeselect                                          PASS
+    millisecondDatesAndPossibleDuplicates                      PASS
+    emptyUriIsDroppedAndBadMetadataDoesNotThrow                PASS
+    sortsByNameSizeDateAndDuration                             PASS
+    unknownNumbersStayLastInBothDirections                     PASS
+    searchMatchesFilenameOnlyAndIgnoresCase                    PASS
+
+Test run finished after 264 ms
+20 tests found, 20 started, 20 successful, 0 failed, 0 skipped
+
+Not run: instrumented tests, Compose compilation, anything on a physical phone.
