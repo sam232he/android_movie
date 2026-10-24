@@ -9,7 +9,7 @@ Checked 24 October 2026. The phone is still not confirmed, so the project target
 | Tool | Result |
 | --- | --- |
 | JDK | Present. `openjdk 17.0.20.1` (Debian). `javac` matches. |
-| Kotlin compiler on `PATH` | Missing. Gradle downloaded Kotlin 2.0.21 while compiling the `core` module. |
+| Kotlin compiler on `PATH` | Missing. Kotlin is supplied by Gradle; the current build configuration uses Kotlin 2.1.10. |
 | Gradle on `PATH` | Missing. Gradle 8.11.1 was downloaded and the wrapper was generated (`gradlew`, `gradlew.bat`, `gradle/wrapper/gradle-wrapper.jar`). |
 | Android SDK | Missing. `ANDROID_HOME` and `ANDROID_SDK_ROOT` are unset. No `sdkmanager`, no `adb`. |
 | Network | Present. `https://dl.google.com` returned HTTP 200. Maven Central resolved the Kotlin test dependencies. |
