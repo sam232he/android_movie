@@ -33,7 +33,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Unit tests (core)
-        run: ./gradlew :core:test --stacktrace
+        run: ./gradlew :core:test -PskipApp=true --stacktrace
 
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --stacktrace
