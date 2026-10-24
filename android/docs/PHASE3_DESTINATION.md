@@ -34,4 +34,4 @@ Free space comes from `StatFs` on the volume directory. That directory is availa
 
 `ACTION_MEDIA_EJECT`, `UNMOUNTED`, `REMOVED`, `BAD_REMOVAL`, `MOUNTED`, and USB attach/detach refresh the same URI. Unplugging marks it disconnected and drops the free-space figure. Plugging a different stick does not retarget the saved URI.
 
-The picker, the probe, and these broadcasts have not been run on a Galaxy phone. `./gradlew :core:test -PskipApp=true` ran here: 38 tests, 0 failures, 18 of them in `DestinationTest`.
+The picker, the probe, and these broadcasts have not been run on a Galaxy phone yet. They are covered off-device by the pure destination rules and tests. The GitHub workflow runs the complete core test task and builds the Android app; a successful CI run is required before treating the source as build-verified.

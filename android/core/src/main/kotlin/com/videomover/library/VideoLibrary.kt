@@ -44,6 +44,8 @@ data class VideoItem(
     val accessible: Boolean,
     val metadataWarning: String?,
     val possibleDuplicate: Boolean = false,
+    /** SAF tree/document URI of the original parent when the provider supplied one. */
+    val parentDirectoryUri: String? = null,
 ) {
     val selectable: Boolean get() = accessible
 
@@ -69,6 +71,8 @@ data class VideoRow(
     val mimeType: String?,
     val accessible: Boolean = true,
     val metadataWarning: String? = null,
+    /** Exact SAF directory containing the document, when known. */
+    val parentDirectoryUri: String? = null,
 )
 
 data class LibraryLoadResult(
@@ -205,6 +209,7 @@ private fun cleanRow(uri: String, row: VideoRow): VideoItem {
         mimeType = row.mimeType?.trim()?.ifEmpty { null },
         accessible = row.accessible,
         metadataWarning = notes.distinct().joinToString(" ").ifEmpty { null },
+        parentDirectoryUri = row.parentDirectoryUri?.trim()?.ifEmpty { null },
     )
 }
 
@@ -236,6 +241,7 @@ private fun richer(a: VideoItem, b: VideoItem): VideoItem {
         dateAddedEpochSec = primary.dateAddedEpochSec ?: secondary.dateAddedEpochSec,
         relativePath = primary.relativePath ?: secondary.relativePath,
         mimeType = primary.mimeType ?: secondary.mimeType,
+        parentDirectoryUri = primary.parentDirectoryUri ?: secondary.parentDirectoryUri,
         accessible = primary.accessible && secondary.accessible,
         metadataWarning = warning,
     )

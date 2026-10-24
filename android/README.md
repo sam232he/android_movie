@@ -1,6 +1,6 @@
 # Video Mover
 
-Android app that will move videos to a USB drive, verify them, then write a 480p or 720p MP4 back to the original folder. Phases 0–3 are in this tree. Later phases are not.
+Android app that will move videos to a USB drive, verify them, then write a 480p or 720p MP4 back to the original folder. Phases 0–3 are implemented in this tree. Later phases are not.
 
 Move only. There is no copy mode. Output resolutions are 480p and 720p only.
 
@@ -10,10 +10,11 @@ Move only. There is no copy mode. Output resolutions are 480p and 720p only.
 - State machine, Room row, and engine choice: [docs/PHASE1_ARCHITECTURE.md](docs/PHASE1_ARCHITECTURE.md)
 - USB destination rules: [docs/PHASE3_DESTINATION.md](docs/PHASE3_DESTINATION.md)
 - Video library: MediaStore query, SAF "Add folder", grid and list, search, sort, multi-select
+- SAF-added videos retain their exact source parent directory URI when available
 - USB destination: one SAF tree, persisted grant, filesystem and free-space warnings, no silent fallback
 - Pure tests for selection, sorting, the state machine, and destination warnings
 
-Not implemented: transfer, delete, conversion, notifications, the batch summary.
+Not implemented: transfer, delete, conversion, notifications, the batch summary, and device-only verification.
 
 ## Build an APK
 
@@ -29,8 +30,8 @@ This project was not built into an APK here. The environment had JDK 17 and netw
 
 Versions: Gradle 8.11.1, Kotlin 2.0.21, Android Gradle Plugin 8.7.3, Compose BOM 2024.12.01.
 
-## Tests already run
+## Verification status
 
-Gradle compiled `:core` and ran the tests in this environment: 38 tests, 0 failures (10 library, 10 state machine, 18 destination). The Gradle daemon logged socket errors and still finished the test task. See [docs/PHASE2_TEST_RESULTS.txt](docs/PHASE2_TEST_RESULTS.txt) for the earlier run.
+The repository contains pure JVM tests for library behavior, the state machine, and destination rules. The historical report in [docs/PHASE2_TEST_RESULTS.txt](docs/PHASE2_TEST_RESULTS.txt) records 20 manually executed tests passing; the current GitHub workflow is the authoritative fresh run because this environment cannot run the Gradle wrapper reliably.
 
-No test has run on a Galaxy A72 or A30s. The Compose screens have not been compiled here. The USB picker has not been opened on a device.
+No test has run on a Galaxy A72 or A30s. The USB picker has not been opened on a device. The target phone still needs to be confirmed before narrowing `minSdk` or documenting device-specific behavior.

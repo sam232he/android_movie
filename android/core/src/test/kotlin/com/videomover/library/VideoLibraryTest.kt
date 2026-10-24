@@ -114,6 +114,27 @@ class VideoLibraryTest {
     }
 
     @Test
+    fun safRowsKeepTheirExactParentDirectory() {
+        val result = normalizeRows(
+            listOf(
+                VideoRow(
+                    uri = "content://tree/file/7",
+                    fileName = "Trip.mov",
+                    sizeBytes = 10,
+                    durationMs = 100,
+                    width = 640,
+                    height = 480,
+                    dateAddedRaw = null,
+                    relativePath = null,
+                    mimeType = "video/quicktime",
+                    parentDirectoryUri = "content://tree/dir/trips",
+                ),
+            ),
+        )
+        assertEquals("content://tree/dir/trips", result.items.single().parentDirectoryUri)
+    }
+
+    @Test
     fun emptyUriIsDroppedAndBadMetadataDoesNotThrow() {
         val result = normalizeRows(
             listOf(

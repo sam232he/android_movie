@@ -1,6 +1,6 @@
 # Phase 0 — Compatibility
 
-Checked 20 October 2026. The phone was not confirmed, so the project targets both devices that have been named.
+Checked 24 October 2026. The phone is still not confirmed, so the project targets both devices that have been named. This is the only Phase 0 item that requires a user decision.
 
 ## Build capability
 
@@ -67,7 +67,7 @@ On API 30 and higher, with this app's target, `ACTION_OPEN_DOCUMENT_TREE` cannot
 - the `Download` directory
 - `Android/data` and `Android/obb` (also blocked for `ACTION_OPEN_DOCUMENT`)
 
-A subfolder the user can still open (for example `Movies/Trips`) is allowed. A USB volume is a different volume; its tree can be granted. That picker is Phase 3 and is not in the app yet. Phase 2 uses the tree picker only as an extra **source** folder ("Add folder"), and it persists a read grant when the provider allows it.
+A subfolder the user can still open (for example `Movies/Trips`) is allowed. A USB volume is a different volume; its tree can be granted. Phase 2 uses the tree picker as an extra **source** folder ("Add folder"), and Phase 3 uses it for the USB destination. Source rows retain the exact SAF parent directory URI when the provider supplies one.
 
 ## Where a later MP4 may be written
 
@@ -87,7 +87,7 @@ The USB copy is not an output location. There will be no single global output fo
 
 Stock Android, including these Samsung phones, generally writes FAT32 and exFAT over OTG. NTFS is often read-only or invisible to the system picker. SAF does not reliably report the filesystem type, so the app must not assume exFAT, FAT32, or NTFS.
 
-Phase 3 rules, not built yet:
+Phase 3 rules implemented in `core` and the Android destination repository:
 
 - Probe by creating and deleting a temp file. A failed probe means not writable. Do not switch destinations.
 - If any selected file is 4 GiB or larger, warn that a FAT32 stick will reject it, even when the filesystem could not be identified.
@@ -95,4 +95,4 @@ Phase 3 rules, not built yet:
 
 ## Not claimed
 
-No APK, no install, no on-device timing, no proof of hardware encoding, no proof One UI will keep a later foreground service alive.
+No APK was built in this local environment, no install or on-device timing has been performed, no proof of hardware encoding exists, and no proof One UI will keep a later foreground service alive exists. GitHub Actions is configured to build the APK with SDK 35.

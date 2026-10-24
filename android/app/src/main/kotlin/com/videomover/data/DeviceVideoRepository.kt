@@ -174,7 +174,7 @@ class DeviceVideoRepository(private val context: Context) {
             }
             if (!child.isFile || !isVideo(child)) continue
             rows += try {
-                rowFromDocument(child)
+                rowFromDocument(child, directory.uri.toString())
             } catch (error: Exception) {
                 onUnreadable()
                 VideoRow(
@@ -194,7 +194,7 @@ class DeviceVideoRepository(private val context: Context) {
         }
     }
 
-    private fun rowFromDocument(file: DocumentFile): VideoRow {
+    private fun rowFromDocument(file: DocumentFile, parentUri: String): VideoRow {
         val uri = file.uri
         var duration: Long? = null
         var width: Int? = null
@@ -240,6 +240,7 @@ class DeviceVideoRepository(private val context: Context) {
             mimeType = file.type,
             accessible = file.canRead(),
             metadataWarning = warning,
+            parentDirectoryUri = parentUri,
         )
     }
 
