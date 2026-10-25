@@ -1,7 +1,7 @@
 plugins {
     id("com.android.application")
     kotlin("android")
-    kotlin("kapt")
+    id("com.google.devtools.ksp")
     kotlin("plugin.compose")
 }
 
@@ -51,6 +51,7 @@ dependencies {
     // Media3 1.11.x requires compileSdk 36; the project intentionally builds
     // against SDK 35 in CI and on the supported Android toolchain.
     val media3Version = "1.5.1"
+    val roomVersion = "2.7.2"
 
     implementation(project(":core"))
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
@@ -64,9 +65,9 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.work:work-runtime-ktx:2.12.0")
     implementation("androidx.documentfile:documentfile:1.0.1")
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    kapt("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    ksp("androidx.room:room-compiler:$roomVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("androidx.media3:media3-common:$media3Version")
     implementation("androidx.media3:media3-transformer:$media3Version")
