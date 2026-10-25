@@ -1,7 +1,7 @@
 package com.videomover.model
 
 /**
- * Persistent per-file record. This is the Room row the later phases will store.
+ * Persistent per-file record. The Android app stores this as the Room move_files row.
  * Fields stay in the pure module so the state machine can enforce them without Android.
  *
  * A restart must be able to reconstruct this from the database and must not infer
@@ -15,6 +15,8 @@ data class MoveFileRecord(
     val sourceParentDirectoryUri: String?,
     /** MediaStore RELATIVE_PATH (for example "DCIM/Camera/"). Null when the platform does not provide one. */
     val sourceRelativePath: String?,
+    /** Legacy MediaStore DATA path, retained for Android 9 and lower output placement. */
+    val sourceDataPath: String? = null,
     val originalFileName: String,
     val externalDestinationTreeUri: String,
     val destinationFileUri: String?,

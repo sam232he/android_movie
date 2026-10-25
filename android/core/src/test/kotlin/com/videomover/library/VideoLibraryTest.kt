@@ -135,6 +135,27 @@ class VideoLibraryTest {
     }
 
     @Test
+    fun legacyMediaStorePathIsRetainedForOutputPlacement() {
+        val result = normalizeRows(
+            listOf(
+                VideoRow(
+                    uri = "content://media/legacy/7",
+                    fileName = "Trip.mov",
+                    sizeBytes = 10,
+                    durationMs = 100,
+                    width = 640,
+                    height = 480,
+                    dateAddedRaw = null,
+                    relativePath = "DCIM/Camera/",
+                    mimeType = "video/quicktime",
+                    sourceDataPath = "/storage/emulated/0/DCIM/Camera/Trip.mov",
+                ),
+            ),
+        )
+        assertEquals("/storage/emulated/0/DCIM/Camera/Trip.mov", result.items.single().sourceDataPath)
+    }
+
+    @Test
     fun emptyUriIsDroppedAndBadMetadataDoesNotThrow() {
         val result = normalizeRows(
             listOf(

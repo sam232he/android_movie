@@ -137,6 +137,11 @@ class DeviceVideoRepository(private val context: Context) {
         } else {
             relativeHintFromData(cursor.stringOrNull(MediaStore.Video.Media.DATA))
         }
+        val legacyDataPath = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            cursor.stringOrNull(MediaStore.Video.Media.DATA)
+        } else {
+            null
+        }
         return VideoRow(
             uri = uri,
             fileName = cursor.stringOrNull(MediaStore.Video.Media.DISPLAY_NAME),
@@ -149,6 +154,7 @@ class DeviceVideoRepository(private val context: Context) {
             mimeType = cursor.stringOrNull(MediaStore.Video.Media.MIME_TYPE),
             accessible = !pending,
             metadataWarning = if (pending) "Still being saved by another app." else null,
+            sourceDataPath = legacyDataPath,
         )
     }
 

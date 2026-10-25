@@ -1,10 +1,12 @@
 # Video Mover
 
-Android app that will move videos to a USB drive, verify them, then write a 480p or 720p MP4 back to the original folder. Phases 0–3 are implemented in this tree. Later phases are not.
+Android app that moves videos to a USB drive, verifies them, converts a 480p or 720p MP4, places it beside the original source, queues long-running work through WorkManager, and requires a pre-flight confirmation. Phases 0–8 are implemented in this tree.
 
 Move only. There is no copy mode. Output resolutions are 480p and 720p only.
 
 ## What is implemented
+
+Phase 9 adds actionable failure messages, cancellation-safe repository handling, and CI test-result artifacts. See [docs/PHASE9_QUALITY.md](docs/PHASE9_QUALITY.md).
 
 - Compatibility notes and the SDK decision: [docs/PHASE0_COMPATIBILITY.md](docs/PHASE0_COMPATIBILITY.md)
 - State machine, Room row, and engine choice: [docs/PHASE1_ARCHITECTURE.md](docs/PHASE1_ARCHITECTURE.md)
@@ -12,9 +14,15 @@ Move only. There is no copy mode. Output resolutions are 480p and 720p only.
 - Video library: MediaStore query, SAF "Add folder", grid and list, search, sort, multi-select
 - SAF-added videos retain their exact source parent directory URI when available
 - USB destination: one SAF tree, persisted grant, filesystem and free-space warnings, no silent fallback
+- Phase 4 transfer core: Room records, temp-file streaming, SHA-256 read-back verification, collision refusal, and source deletion only after verification
+- Phase 5 conversion: Media3 H.264/AAC MP4 export, rotation-aware proportional sizing, no-upscale behavior, output validation, and one-at-a-time conversion
+- Phase 6 output placement: exact MediaStore/SAF original-directory output, pending MediaStore publishing, temp-file SAF writes, collision choices, and no fallback folder
+- Phase 7 background processing: WorkManager foreground worker, progress/cancel notification, persisted recovery reconciliation, and safe interruption handling
+- Phase 8 pre-flight/UI flow: 480p/720p choice, USB and phone-space estimates, blocking warnings, explicit batch confirmation, sequential queueing, and durable results screen
+- Phase 9 error catalog, cancellation safety, actionable results, troubleshooting guidance, and CI test-result artifacts
 - Pure tests for selection, sorting, the state machine, and destination warnings
 
-Not implemented: transfer, delete, conversion, notifications, the batch summary, and device-only verification.
+Not implemented: device-only verification and real acceptance clips. The current queue processes files sequentially; Phases 4–8 are documented in [docs/PHASE4_TRANSFER.md](docs/PHASE4_TRANSFER.md), [docs/PHASE5_CONVERSION.md](docs/PHASE5_CONVERSION.md), [docs/PHASE6_OUTPUT.md](docs/PHASE6_OUTPUT.md), [docs/PHASE7_BACKGROUND.md](docs/PHASE7_BACKGROUND.md), and [docs/PHASE8_PREFLIGHT.md](docs/PHASE8_PREFLIGHT.md).
 
 ## Build an APK
 
@@ -31,6 +39,8 @@ This project was not built into an APK here. The environment had JDK 17 and netw
 Versions: Gradle 8.11.1, Kotlin 2.1.10, Android Gradle Plugin 8.7.2, Compose BOM 2024.12.01.
 
 ## Verification status
+
+Phase 10 final report: [docs/PHASE10_FINAL_REPORT.md](docs/PHASE10_FINAL_REPORT.md). No APK was generated in this workspace; the expected successful artifact is `app/build/outputs/apk/debug/app-debug.apk` under the Android project.
 
 The repository contains pure JVM tests for library behavior, the state machine, and destination rules. The historical report in [docs/PHASE2_TEST_RESULTS.txt](docs/PHASE2_TEST_RESULTS.txt) records 20 manually executed tests passing; the current GitHub workflow is the authoritative fresh run because this environment cannot run the Gradle wrapper reliably.
 

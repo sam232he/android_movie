@@ -33,19 +33,22 @@ jobs:
         run: chmod +x gradlew
 
       - name: Unit tests (core)
-        run: ./gradlew :core:test -PskipApp=true --stacktrace
+        run: ./gradlew :core:test -PskipApp=true --no-daemon --stacktrace
 
       - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --stacktrace
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: core-test-reports
-          path: android/core/build/reports/tests/test/
+          path: |
+            android/core/build/reports/tests/test/
+            android/core/build/test-results/test/
 
       - name: Upload APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: video-mover-debug-apk

@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.videomover.destination.DestinationStatus
 import com.videomover.destination.FilesystemKind
+import com.videomover.model.OutputResolution
 
 @Composable
 fun DestinationScreen(
@@ -24,6 +25,12 @@ fun DestinationScreen(
     onChoose: () -> Unit,
     onForget: () -> Unit,
     onRefresh: () -> Unit,
+    onMove: () -> Unit,
+    resolution: OutputResolution,
+    onResolutionChange: (OutputResolution) -> Unit,
+    moveEnabled: Boolean,
+    moving: Boolean,
+    message: String?,
 ) {
     Column(
         modifier = Modifier
@@ -57,7 +64,19 @@ fun DestinationScreen(
             Text(if (state.persisted) "Permission saved on this phone." else "Permission is not saved for next time.")
             Text("Selected videos checked: ${state.selectedCount}")
             Text("Status: ${statusLabel(state.status)}")
+            Text("Output resolution", style = MaterialTheme.typography.titleMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutputResolution.entries.forEach { option ->
+                    Button(onClick = { onResolutionChange(option) }, enabled = option != resolution) {
+                        Text(if (option == resolution) "${option.label} selected" else option.label)
+                    }
+                }
+            }
+            Button(onClick = onMove, enabled = moveEnabled && !moving) {
+                Text(if (moving) "Moving…" else "Move next selected")
+            }
         }
+        message?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
         state.assessment.warnings.forEach { warning ->
             Text(
                 warning.message,

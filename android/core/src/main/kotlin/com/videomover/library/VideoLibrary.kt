@@ -46,6 +46,8 @@ data class VideoItem(
     val possibleDuplicate: Boolean = false,
     /** SAF tree/document URI of the original parent when the provider supplied one. */
     val parentDirectoryUri: String? = null,
+    /** Legacy MediaStore DATA path, available on Android 9 and lower. */
+    val sourceDataPath: String? = null,
 ) {
     val selectable: Boolean get() = accessible
 
@@ -73,6 +75,8 @@ data class VideoRow(
     val metadataWarning: String? = null,
     /** Exact SAF directory containing the document, when known. */
     val parentDirectoryUri: String? = null,
+    /** Legacy MediaStore DATA path, available on Android 9 and lower. */
+    val sourceDataPath: String? = null,
 )
 
 data class LibraryLoadResult(
@@ -210,6 +214,7 @@ private fun cleanRow(uri: String, row: VideoRow): VideoItem {
         accessible = row.accessible,
         metadataWarning = notes.distinct().joinToString(" ").ifEmpty { null },
         parentDirectoryUri = row.parentDirectoryUri?.trim()?.ifEmpty { null },
+        sourceDataPath = row.sourceDataPath?.trim()?.ifEmpty { null },
     )
 }
 
@@ -242,6 +247,7 @@ private fun richer(a: VideoItem, b: VideoItem): VideoItem {
         relativePath = primary.relativePath ?: secondary.relativePath,
         mimeType = primary.mimeType ?: secondary.mimeType,
         parentDirectoryUri = primary.parentDirectoryUri ?: secondary.parentDirectoryUri,
+        sourceDataPath = primary.sourceDataPath ?: secondary.sourceDataPath,
         accessible = primary.accessible && secondary.accessible,
         metadataWarning = warning,
     )
