@@ -17,7 +17,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,6 +25,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -190,28 +192,35 @@ class MainActivity : ComponentActivity() {
                             .map { SelectedFileSize(it.id, it.fileName, it.sizeBytes) },
                     )
                 }
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
-                        TextButton(onClick = { screen = AppScreen.LIBRARY }) {
-                            Text(
-                                "Library",
-                                color = if (screen == AppScreen.LIBRARY) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
+                Scaffold(
+                    bottomBar = {
+                        NavigationBar {
+                            NavigationBarItem(
+                                selected = screen == AppScreen.LIBRARY,
+                                onClick = { screen = AppScreen.LIBRARY },
+                                icon = { Text("Lib") },
+                                label = { Text("Library") },
+                            )
+                            NavigationBarItem(
+                                selected = screen == AppScreen.DESTINATION,
+                                onClick = { screen = AppScreen.DESTINATION },
+                                icon = { Text("Dst") },
+                                label = { Text("Destination") },
+                            )
+                            NavigationBarItem(
+                                selected = screen == AppScreen.RESULTS,
+                                onClick = { screen = AppScreen.RESULTS },
+                                icon = { Text("Res") },
+                                label = { Text("Results") },
                             )
                         }
-                        TextButton(onClick = { screen = AppScreen.DESTINATION }) {
-                            Text(
-                                "USB",
-                                color = if (screen == AppScreen.DESTINATION) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
-                            )
-                        }
-                        TextButton(onClick = { screen = AppScreen.RESULTS }) {
-                            Text(
-                                "Results",
-                                color = if (screen == AppScreen.RESULTS) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
-                            )
-                        }
-                    }
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    },
+                ) { padding ->
+                    Box(
+                        modifier = Modifier
+                            .padding(padding)
+                            .fillMaxSize(),
+                    ) {
                         when (screen) {
                             AppScreen.LIBRARY -> LibraryScreen(
                                 state = library,
@@ -232,7 +241,7 @@ class MainActivity : ComponentActivity() {
                                 onMove = {
                                     val tree = destination.treeUri
                                     if (tree == null || !destination.assessment.trusted || selectedItems.isEmpty()) {
-                                        transferMessage = "Choose a trusted USB folder and select at least one accessible video."
+                                        transferMessage = "Choose a trusted destination folder and select at least one accessible video."
                                     } else {
                                         summaryVisible = true
                                     }

@@ -225,14 +225,6 @@ fun assessDestination(facts: VolumeFacts?, selected: List<SelectedFileSize>): De
     var writability: Writability
 
     when {
-        facts.internalStorage -> {
-            writability = Writability.UNCONFIRMED
-            warnings += DestinationWarning(
-                DestinationWarningCode.INTERNAL_STORAGE,
-                "Internal storage is not a valid destination for exports.",
-                blocking = true,
-            )
-        }
         facts.permissionRevoked || (!facts.grantedRead && !facts.grantedWrite) -> {
             writability = Writability.UNCONFIRMED
             warnings += DestinationWarning(
@@ -317,8 +309,7 @@ fun shouldPersist(facts: VolumeFacts): Boolean {
         facts.grantedWrite &&
         facts.persistable &&
         !facts.persisted &&
-        !facts.permissionRevoked &&
-        !facts.internalStorage
+        !facts.permissionRevoked
 }
 
 /**

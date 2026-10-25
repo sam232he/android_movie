@@ -2,6 +2,8 @@ package com.videomover.ui.destination
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +21,7 @@ import com.videomover.destination.DestinationStatus
 import com.videomover.destination.FilesystemKind
 import com.videomover.model.OutputResolution
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DestinationScreen(
     state: DestinationUiState,
@@ -39,17 +42,26 @@ fun DestinationScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("USB destination", style = MaterialTheme.typography.headlineSmall)
+        Text("Destination folder", style = MaterialTheme.typography.headlineSmall)
         Text(
-            "Choose the folder on the USB drive. If that drive is missing or the permission is revoked, nothing else is used.",
+            "Choose a folder on a USB drive or on this phone. If the chosen folder is missing or the permission is revoked, nothing else is used.",
             style = MaterialTheme.typography.bodyMedium,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onChoose, enabled = !state.checking) { Text("Choose USB folder") }
-            if (state.treeUri != null) {
-                Button(onClick = onForget, enabled = !state.checking) { Text("Forget") }
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Button(onClick = onChoose, enabled = !state.checking) {
+                Text("Choose folder")
             }
-            Button(onClick = onRefresh, enabled = !state.checking && state.treeUri != null) { Text("Check again") }
+            if (state.treeUri != null) {
+                Button(onClick = onForget, enabled = !state.checking) {
+                    Text("Forget")
+                }
+                Button(onClick = onRefresh, enabled = !state.checking) {
+                    Text("Check again")
+                }
+            }
         }
         if (state.checking) {
             CircularProgressIndicator()
@@ -65,14 +77,21 @@ fun DestinationScreen(
             Text("Selected videos checked: ${state.selectedCount}")
             Text("Status: ${statusLabel(state.status)}")
             Text("Output resolution", style = MaterialTheme.typography.titleMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 OutputResolution.entries.forEach { option ->
                     Button(onClick = { onResolutionChange(option) }, enabled = option != resolution) {
                         Text(if (option == resolution) "${option.label} selected" else option.label)
                     }
                 }
             }
-            Button(onClick = onMove, enabled = moveEnabled && !moving) {
+            Button(
+                onClick = onMove,
+                enabled = moveEnabled && !moving,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Text(if (moving) "Moving…" else "Move next selected")
             }
         }
@@ -80,7 +99,7 @@ fun DestinationScreen(
         state.assessment.warnings.forEach { warning ->
             Text(
                 warning.message,
-                color = if (warning.blocking) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                color = if (warning.blocking) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.fillMaxWidth(),
             )
         }

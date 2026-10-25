@@ -160,16 +160,20 @@ class DestinationTest {
     }
 
     @Test
-    fun internalStorageAndMissingWriteAreBlocked() {
-        val internal = assessDestination(ready(internalStorage = true, filesystemRaw = "ext4"), emptyList())
-        assertEquals(DestinationWarningCode.INTERNAL_STORAGE, internal.warnings.single().code)
-        assertFalse(internal.trusted)
+    fun internalStorageIsAllowedAndMissingWriteIsBlocked() {
+        val internal = assessDestination(
+            ready(internalStorage = true, filesystemRaw = "ext4", freeBytes = 5_000_000_000),
+            emptyList(),
+        )
+        assertTrue(internal.trusted)
+        assertFalse(internal.warnings.any { it.code == DestinationWarningCode.INTERNAL_STORAGE && it.blocking })
 
         val readGrantOnly = assessDestination(
             ready(grantedWrite = false, grantedRead = true, persisted = false, writeProbeSucceeded = null, canWriteFlag = null),
             emptyList(),
         )
         assertEquals(DestinationWarningCode.NO_WRITE_PERMISSION, readGrantOnly.warnings.single().code)
+        assertFalse(readGrantOnly.trusted)
     }
 
     @Test

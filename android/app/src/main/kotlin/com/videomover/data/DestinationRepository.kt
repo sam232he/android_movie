@@ -90,8 +90,12 @@ class DestinationRepository(private val context: Context) {
             doc == null -> null
             else -> runCatching { doc.canWrite() }.getOrNull()
         }
-        val capacity = if (present && !internal && path != null) readCapacity(path) else null to null
-        val probe = if (present && grantedWrite && !internal && !revoked && doc != null && canWrite == true) {
+        val capacity = if (present && path != null) {
+            readCapacity(path)
+        } else {
+            null to null
+        }
+        val probe = if (present && grantedWrite && !revoked && doc != null && canWrite == true) {
             probeWrite(doc)
         } else {
             null
