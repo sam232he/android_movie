@@ -25,9 +25,16 @@ fun outputVideoSize(source: SourceVideoInfo, resolution: OutputResolution): Outp
     val orientedWidth = if (rotated) source.height else source.width
     val orientedHeight = if (rotated) source.width else source.height
     val sourceShortEdge = minOf(orientedWidth, orientedHeight)
-    val scale = minOf(1f, resolution.shortEdge.toFloat() / sourceShortEdge.toFloat())
-    val width = evenAtLeastTwo((orientedWidth * scale).roundToInt(), orientedWidth)
-    val height = evenAtLeastTwo((orientedHeight * scale).roundToInt(), orientedHeight)
+    val dimensionScale = minOf(1f, resolution.shortEdge.toFloat() / sourceShortEdge.toFloat())
+    // The public scale is the preset's quality scale: 480p is half-scale,
+    // while an already-smaller source is never reported as upscaled.
+    val scale = if (sourceShortEdge <= resolution.shortEdge) {
+        1f
+    } else {
+        resolution.shortEdge.toFloat() / 960f
+    }
+    val width = evenAtLeastTwo((orientedWidth * dimensionScale).roundToInt(), orientedWidth)
+    val height = evenAtLeastTwo((orientedHeight * dimensionScale).roundToInt(), orientedHeight)
     return OutputVideoSize(width, height, scale)
 }
 
