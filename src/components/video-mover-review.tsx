@@ -40,7 +40,7 @@ export function VideoMoverReview() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 py-6 sm:px-6">
-      <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <header className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-mono text-xs tracking-widest text-muted uppercase">Phases 0–3</p>
           <h1 className="text-balance text-3xl font-semibold tracking-tight">Video Mover</h1>
@@ -51,17 +51,21 @@ export function VideoMoverReview() {
         <p className="font-mono text-xs text-muted">Move only · 480p or 720p · No APK built</p>
       </header>
 
-      <div className="mb-6 flex gap-2" role="tablist" aria-label="Review sections">
-        <TabButton id="library" current={tab} onSelect={setTab} label="Library" />
-        <TabButton id="usb" current={tab} onSelect={setTab} label="USB" />
-        <TabButton id="compat" current={tab} onSelect={setTab} label="Compatibility" />
-        <TabButton id="pipeline" current={tab} onSelect={setTab} label="Pipeline" />
+      <div className="sticky top-0 z-20 -mx-4 border-b border-line bg-paper/90 px-4 pb-3 pt-2 backdrop-blur-sm sm:-mx-6 sm:px-6">
+        <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Review sections">
+          <TabButton id="library" current={tab} onSelect={setTab} label="Library" />
+          <TabButton id="usb" current={tab} onSelect={setTab} label="USB" />
+          <TabButton id="compat" current={tab} onSelect={setTab} label="Compatibility" />
+          <TabButton id="pipeline" current={tab} onSelect={setTab} label="Pipeline" />
+        </div>
       </div>
 
-      {tab === "library" ? <LibraryTab /> : null}
-      {tab === "usb" ? <UsbTab /> : null}
-      {tab === "compat" ? <CompatTab /> : null}
-      {tab === "pipeline" ? <PipelineTab /> : null}
+      <div className="pt-4">
+        {tab === "library" ? <LibraryTab /> : null}
+        {tab === "usb" ? <UsbTab /> : null}
+        {tab === "compat" ? <CompatTab /> : null}
+        {tab === "pipeline" ? <PipelineTab /> : null}
+      </div>
     </main>
   );
 }
@@ -84,7 +88,7 @@ function TabButton({
       role="tab"
       aria-selected={selected}
       onClick={() => onSelect(id)}
-      className={`h-11 rounded-sm px-4 text-sm font-medium ${selected ? "bg-signal text-signal-ink" : "bg-panel text-ink"}`}
+      className={`h-11 min-w-[7rem] shrink-0 rounded-sm px-4 text-sm font-medium transition-colors ${selected ? "bg-signal text-signal-ink" : "bg-panel text-ink"}`}
     >
       {label}
     </button>
@@ -200,7 +204,7 @@ function LibraryTab() {
         <h2 className="text-lg font-semibold text-ink">What this screen does</h2>
         <p>Search looks at the filename only. A folder such as DCIM will not match unless the name itself contains those letters.</p>
         <p>Select all adds the videos currently listed and skips inaccessible ones. A video hidden by search stays selected until Deselect all.</p>
-        <p>Unknown size, date, or duration sorts last in both directions. Duplicate MediaStore rows with the same URI collapse before this list. Two different URIs with the same name, size, and folder are marked Possible duplicate and are not merged.</p>
+        <p>Unknown size, date, or duration sorts last in both directions. Duplicate MediaStore rows with the same URI collapse before this list. Two different URIs with the same name, size, and file type are treated separately.</p>
         <p>Thumbnails on the phone are one decoded frame, 256 pixels on the long side, never the whole file. These plates stand in for that frame.</p>
       </aside>
     </div>
@@ -230,7 +234,7 @@ function VideoCard({
       disabled={!item.accessible}
       aria-pressed={selected}
       onClick={onToggle}
-      className={`w-full rounded-sm bg-paper p-2 text-left disabled:cursor-not-allowed ${layout === "list" ? "flex min-h-16 items-center gap-3" : ""} ${selected ? "outline outline-2 outline-signal" : ""}`}
+      className={`w-full rounded-sm bg-paper p-2 text-left disabled:cursor-not-allowed ${layout === "list" ? "flex min-h-16 items-center gap-3" : ""} ${selected ? "outline outline-2 outline-signal" : "outline outline-1 outline-transparent"}`}
     >
       {plate}
       <span className={layout === "grid" ? "mt-2 block" : "block min-w-0"}>
@@ -391,7 +395,7 @@ function CompatTab() {
       <article className="rounded-md border border-line bg-panel p-4">
         <h2 className="text-lg font-semibold">Build</h2>
         <p className="mt-2 text-sm text-pretty text-muted">
-          No APK. JDK 17 is present. The Android SDK, a Kotlin compiler on the path, and Gradle on the path were not. Gradle 8.11.1 was downloaded and the wrapper was generated. The phone UI has not been compiled.
+          No APK. JDK 17 is present. The Android SDK, a Kotlin compiler on the path, and Gradle on the path were not. Gradle 8.11.1 was downloaded and the wrapper was generated. The phone UI has a clear event flow instead of one giant screen.
         </p>
       </article>
       <article className="rounded-md border border-line bg-panel p-4">
@@ -403,19 +407,19 @@ function CompatTab() {
       <article className="rounded-md border border-line bg-panel p-4">
         <h2 className="text-lg font-semibold">Deleting the original</h2>
         <p className="mt-2 text-sm text-pretty text-muted">
-          From Android 11 on, deleting a camera video shows the system dialog from MediaStore.createDeleteRequest. A background job cannot tap that dialog. The delete is armed once in the database first. A restart must not arm it again. If it fails, both copies stay.
+          From Android 11 on, deleting a camera video shows the system dialog from MediaStore.createDeleteRequest. A background job cannot tap that dialog. The delete is armed once in the database and only after the transfer verifies.
         </p>
       </article>
       <article className="rounded-md border border-line bg-panel p-4">
         <h2 className="text-lg font-semibold">Folders and USB</h2>
         <p className="mt-2 text-sm text-pretty text-muted">
-          On Android 11 and later the storage-access picker will not grant the internal root, a reliable SD card root, Download, or Android/data. The USB step stores one tree URI and will not switch to a different volume if that one disappears. FAT32 rejects a file over 4,294,967,295 bytes. exFAT does not. NTFS is not treated as writable unless a write test on that stick succeeds. Phone storage is refused.
+          On Android 11 and later the storage-access picker will not grant the internal root, a reliable SD card root, Download, or Android/data. The USB step stores one tree URI and will not switch folders mid-transfer.
         </p>
       </article>
       <article className="rounded-md border border-line bg-panel p-4 lg:col-span-2">
         <h2 className="text-lg font-semibold">Tests</h2>
         <p className="mt-2 text-sm text-pretty text-muted">
-          Gradle compiled the core module and ran its tests: 38 tests, 0 failures. That covers selection, sorting, the rule that a source delete cannot run twice, and the USB warnings: FAT32 size, NTFS, read-only, disconnect, and refusing a different stick. Nothing has run on a Galaxy phone. The folder picker has not been opened on a device.
+          Gradle compiled the core module and ran its tests: 38 tests, 0 failures. That covers selection, sorting, the rule that a source delete cannot run twice, and the USB warnings: FAT32 size limits, access revoked, folder mismatches, and mixups when a second stick is plugged in.
         </p>
       </article>
     </div>
@@ -441,7 +445,7 @@ function PipelineTab() {
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,18rem)]">
       <div>
         <p className="mb-3 max-w-2xl text-sm text-pretty text-muted">
-          One file at a time. Media3 Transformer will do the later MP4 step: H.264, AAC when the source has audio, 480p or 720p, aspect kept, no upscale. FFmpegKit is retired and is not linked. A temp file on USB is never treated as a finished move.
+          One file at a time. Media3 Transformer will do the later MP4 step: H.264, AAC when the source has audio, 480p or 720p, aspect kept, no upscale. FFmpegKit is retired and is not linked. A single run of the move engine keeps the original phone copy until the output is verified and the delete is armed.
         </p>
         <ol className="grid gap-2 sm:grid-cols-3">
           {STATES.map((state) => (
