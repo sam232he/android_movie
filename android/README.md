@@ -36,7 +36,7 @@ This project was not built into an APK here. The environment had JDK 17 and netw
 
 `minSdk` is 28 so an unconfirmed Galaxy A30s still on Android 9 is included. `targetSdk` and `compileSdk` are 35. Say which phone you actually have if that should be narrowed.
 
-Versions: Gradle 8.11.1, Kotlin 2.1.10, Android Gradle Plugin 8.7.2, Compose BOM 2024.12.01.
+Versions: Gradle 8.11.1, Kotlin 2.0.21, Android Gradle Plugin 8.7.2, Compose BOM 2024.12.01.
 
 ## Verification status
 
