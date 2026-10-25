@@ -7,8 +7,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -23,12 +24,20 @@ fun ResultsScreen(
     onStartNew: () -> Unit,
     onConfirmDelete: (() -> Unit)? = null,
 ) {
+    val isBusy = records.any { it.state == "CONVERTING" }
+
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("Conversion results", style = MaterialTheme.typography.headlineSmall)
-        Button(onClick = onStartNew, modifier = Modifier.fillMaxWidth()) { Text("Start a new move") }
+        Button(onClick = onStartNew, modifier = Modifier.fillMaxWidth(), enabled = !isBusy) {
+            if (isBusy) {
+                Text("Conversion in progress...")
+            } else {
+                Text("Start a new move")
+            }
+        }
         if (onConfirmDelete != null) {
             Button(onClick = onConfirmDelete, modifier = Modifier.fillMaxWidth()) {
                 Text("Confirm deletion, then convert")
@@ -43,6 +52,14 @@ fun ResultsScreen(
                     Text(record.originalFileName, style = MaterialTheme.typography.titleMedium)
                     record.destinationFileName?.let { Text("Verified original copy: $it") }
                     Text("${record.progressPercent}% - ${stateLabel(record.state)}")
+
+                    if (record.state == "CONVERTING" || record.progressPercent > 0) {
+                        LinearProgressIndicator(
+                            progress = { (record.progressPercent.coerceIn(0, 100) / 100f) },
+                            modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 6.dp),
+                        )
+                    }
+
                     Text("Resolution: ${record.outputResolution.label}")
                     record.errorMessage?.let { detail ->
                         val reason = record.attentionReason?.let { value ->
