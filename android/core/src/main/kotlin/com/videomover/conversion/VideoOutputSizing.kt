@@ -26,9 +26,17 @@ fun outputVideoSize(source: SourceVideoInfo, resolution: OutputResolution): Outp
     val orientedHeight = if (rotated) source.width else source.height
     val sourceShortEdge = minOf(orientedWidth, orientedHeight)
     val scale = minOf(1f, resolution.shortEdge.toFloat() / sourceShortEdge.toFloat())
-    val width = evenAtLeastTwo((orientedWidth * scale).roundToInt())
-    val height = evenAtLeastTwo((orientedHeight * scale).roundToInt())
+    val width = evenAtLeastTwo((orientedWidth * scale).roundToInt(), orientedWidth)
+    val height = evenAtLeastTwo((orientedHeight * scale).roundToInt(), orientedHeight)
     return OutputVideoSize(width, height, scale)
 }
 
-private fun evenAtLeastTwo(value: Int): Int = max(2, value - value.mod(2))
+/**
+ * Video encoders generally require even dimensions. Round to the nearest even
+ * value, but never exceed the corresponding source dimension.
+ */
+private fun evenAtLeastTwo(value: Int, sourceDimension: Int): Int {
+    val roundedEven = if (value.mod(2) == 0) value else value + 1
+    val bounded = minOf(roundedEven, sourceDimension)
+    return max(2, if (bounded.mod(2) == 0) bounded else bounded - 1)
+}
