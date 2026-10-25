@@ -311,9 +311,43 @@ fun markRevoked(facts: VolumeFacts): VolumeFacts = facts.copy(
     totalBytes = null,
 )
 
-fun destinationUriToUse(remembered: RememberedDestination?, connectedTreeUris: List<String>): String? {
-    if (remembered == null) return null
-    return connectedTreeUris.firstOrNull { it == remembered.treeUri }
+
+fun shouldPersist(facts: VolumeFacts): Boolean {
+    return facts.volumePresent &&
+        facts.grantedWrite &&
+        facts.persistable &&
+        !facts.persisted &&
+        !facts.permissionRevoked &&
+        !facts.internalStorage
+}
+
+/**
+ * Returns the remembered folder only when that exact tree is still connected.
+ * Any other connected tree is ignored.
+ */
+fun resolveRememberedDestination(
+    remembered: RememberedDestination?,
+    connectedTreeUris: Set<String>,
+): ResolvedDestination {
+    if (remembered == null) return ResolvedDestination.None
+    return if (remembered.treeUri in connectedTreeUris) {
+        ResolvedDestination.Selected(remembered)
+    } else {
+        ResolvedDestination.Missing(remembered)
+    }
+}
+
+fun destinationUriToUse(resolved: ResolvedDestination): String? {
+    return when (resolved) {
+        is ResolvedDestination.Selected -> resolved.destination.treeUri
+        is ResolvedDestination.Missing, ResolvedDestination.None -> null
+    }
+}
+
+fun adoptPickerOutcome(previous: RememberedDestination?, outcome: PickerOutcome): RememberedDestination? {
+    val uri = outcome.treeUri?.takeIf { it.isNotBlank() } ?: return previous
+    val name = outcome.displayName?.takeIf { it.isNotBlank() } ?: uri
+    return RememberedDestination(uri, name)
 }
 
 fun missingDestinationMessage(name: String): String = "$name is not available. Another folder will not be chosen."
