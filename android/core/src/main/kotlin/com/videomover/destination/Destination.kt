@@ -203,219 +203,342 @@ fun assessDestination(facts: VolumeFacts?, selected: List<SelectedFileSize>): De
     }
 
     val filesystem = classifyFilesystem(facts.filesystemRaw)
-    val warnings = ArrayList<DestinationWarning>()
-    val writability: Writability
+    val warnings = mutableListOf<DestinationWarning>()
+    var writability: Writability
 
-    if (facts.permissionRevoked || (!facts.grantedRead && !facts.grantedWrite)) {
-        writability = Writability.UNCONFIRMED
-        warnings += DestinationWarning(
-            DestinationWarningCode.PERMISSION_REVOKED,
-            "Permission for ${facts.displayName} was revoked. Another destination will not be used.",
-            blocking = true,
-        )
-    } else if (!facts.volumePresent) {
-        writability = Writability.UNCONFIRMED
-        warnings += DestinationWarning(
-            DestinationWarningCode.DISCONNECTED,
-            "${facts.displayName} is not connected. Another destination will not be used.",
-            blocking = true,
-        )
-    } else if (facts.internalStorage) {
-        writability = Writability.UNCONFIRMED
-        warnings += DestinationWarning(
-            DestinationWarningCode.INTERNAL_STORAGE,
-            "This folder is on internal storage, not a removable drive. It will not be used as the USB destination.",
-            blocking = true,
-        )
-    } else if (!facts.grantedWrite) {
-        writability = Writability.UNCONFIRMED
-        warnings += DestinationWarning(
-            DestinationWarningCode.NO_WRITE_PERMISSION,
-            "This folder was opened without write access.",
-            blocking = true,
-        )
-    } else {
-        writability = decideWritability(facts, filesystem)
-        warnings += writabilityWarnings(filesystem, writability)
-        if (!facts.persisted) {
-            warnings += if (facts.persistable) {
-                DestinationWarning(
-                    DestinationWarningCode.PERMISSION_NOT_SAVED,
-                    "Write access is granted for this session and still needs to be saved.",
-                    blocking = false,
-                )
-            } else {
-                DestinationWarning(
-                    DestinationWarningCode.PERMISSION_NOT_PERSISTED,
-                    "Write access was granted, but Android will not keep it. The folder has to be chosen again next time.",
-                    blocking = false,
-                )
-            }
+    when {
+        facts.permissionRevoked || (!facts.grantedRead && !facts.grantedWrite) -> {
+            writability = Writability.UNCONFIRMED
+            warnings += DestinationWarning(
+                DestinationWarningCode.PERMISSION_REVOKED,
+                "Permission for ${facts.displayName} was revoked. Another destination will not be used.",
+                blocking = true,
+            )
         }
-        warnings += fileWarnings(filesystem, selected)
-        warnings += spaceWarnings(facts, selected)
+        !facts.volumePresent -> {
+            writability = Writability.UNCONFIRMED
+            warnings += DestinationWarning(
+                DestinationWarningCode.DISCONNECTED,
+                "${facts.displayName} is not connected. Another destination will not be used.",
+                blocking = true,
+            )
+        }
+        !facts.grantedWrite -> {
+            writability = Writability.UNCONFIRMED
+            warnings += DestinationWarning(
+                DestinationWarningCode.NO_WRITE_PERMISSION,
+                "This folder was opened without write access.",
+                blocking = true,
+            )
+        }
+        else -> {
+            writability = decideWritability(facts, filesystem)
+            warnings += writabilityWarnings(filesystem, writability)
+            if (!facts.persisted) {
+                warnings += if (facts.persistable) {
+                    DestinationWarning(
+                        DestinationWarningCode.PERMISSION_NOT_PERSISTED,
+                        "Write access is granted for this session and still needs to be saved.",
+                        blocking = false,
+                    )
+                } else {
+                    DestinationWarning(
+                        DestinationWarningCode.PERMISSION_NOT_PERSISTED,
+                        "Write access was granted, but Android will not keep it. The folder has to be chosen again next time.",
+                        blocking = false,
+                    )
+                }
+            }
+            warnings += fileWarnings(filesystem, selected)
+            warnings += spaceWarnings(facts, selected)
+        }
     }
 
     val blocking = warnings.any { it.blocking }
-    val status = when {
-        blocking -> DestinationStatus.BLOCKED
-        warnings.isNotEmpty() -> DestinationStatus.WARNING
-        else -> DestinationStatus.READY
-    }
+    val status = if (blocking) DestinationStatus.BLOCKED else if (warnings.isNotEmpty()) DestinationStatus.WARNING else DestinationStatus.READY
     return DestinationAssessment(
         status = status,
         filesystem = filesystem,
         writability = writability,
         warnings = warnings,
         trusted = !blocking,
-        blockedFileIds = warnings.filter { it.blocking && it.fileId != null }.mapNotNull { it.fileId }.toSet(),
+        blockedFileIds = warnings.filter { it.blocking && it.fileId != null }.map { it.fileId!! }.toSet(),
     )
 }
 
-fun shouldPersist(facts: VolumeFacts): Boolean {
-    return facts.volumePresent &&
-        facts.grantedWrite &&
-        facts.persistable &&
-        !facts.persisted &&
-        !facts.permissionRevoked &&
-        !facts.internalStorage
+fun markDisconnected(facts: VolumeFacts): VolumeFacts = facts.copy(
+    volumePresent = false,
+    freeBytes = null,
+    totalBytes = null,
+    canWriteFlag = null,
+    writeProbeSucceeded = null,
+)
+
+fun markRevoked(facts: VolumeFacts): VolumeFacts = facts.copy(
+    grantedRead = false,
+    grantedWrite = false,
+    persisted = false,
+    permissionRevoked = true,
+    canWriteFlag = null,
+    writeProbeSucceeded = null,
+    freeBytes = null,
+    totalBytes = null,
+)
+
+fun destinationUriToUse(remembered: RememberedDestination?, connectedTreeUris: List<String>): String? {
+    if (remembered == null) return null
+    return connectedTreeUris.firstOrNull { it == remembered.treeUri }
 }
 
-fun markDisconnected(facts: VolumeFacts): VolumeFacts {
-    return facts.copy(
-        volumePresent = false,
-        freeBytes = null,
-        totalBytes = null,
-        canWriteFlag = null,
-        writeProbeSucceeded = null,
-    )
-}
+fun missingDestinationMessage(name: String): String = "$name is not available. Another folder will not be chosen."
 
-fun markRevoked(facts: VolumeFacts): VolumeFacts {
-    return facts.copy(
-        grantedRead = false,
-        grantedWrite = false,
-        persisted = false,
-        permissionRevoked = true,
-        canWriteFlag = null,
-        writeProbeSucceeded = null,
-        freeBytes = null,
-        totalBytes = null,
-    )
-}
+data class DrivePreset(
+    val id: String,
+    val label: String,
+    val facts: VolumeFacts,
+)
 
-/**
- * Returns the remembered folder only when that exact tree is still connected.
- * Any other connected tree is ignored.
- */
-fun resolveRememberedDestination(
-    remembered: RememberedDestination?,
-    connectedTreeUris: Set<String>,
-): ResolvedDestination {
-    if (remembered == null) return ResolvedDestination.None
-    return if (remembered.treeUri in connectedTreeUris) {
-        ResolvedDestination.Selected(remembered)
-    } else {
-        ResolvedDestination.Missing(remembered)
-    }
-}
+private const val GiB = 1024L * 1024L * 1024L
 
-/** The only URI a caller may use. Missing and empty both mean none, not "the other drive". */
-fun destinationUriToUse(resolved: ResolvedDestination): String? {
-    return (resolved as? ResolvedDestination.Selected)?.destination?.treeUri
-}
+private fun drive(partial: VolumeFacts): VolumeFacts = VolumeFacts(
+    treeUri = "content://com.android.externalstorage.documents/tree/1A2B-3C4D%3A",
+    displayName = "",
+    grantedRead = true,
+    grantedWrite = true,
+    persisted = true,
+    persistable = true,
+    volumePresent = true,
+    permissionRevoked = false,
+    internalStorage = false,
+    filesystemRaw = null,
+    canWriteFlag = true,
+    writeProbeSucceeded = true,
+    freeBytes = 90 * GiB,
+    totalBytes = 128 * GiB,
+    // Replace exact values from caller-specific data.
+).copy(
+    displayName = partial.displayName,
+    treeUri = partial.treeUri,
+    grantedRead = partial.grantedRead,
+    grantedWrite = partial.grantedWrite,
+    persisted = partial.persisted,
+    persistable = partial.persistable,
+    volumePresent = partial.volumePresent,
+    permissionRevoked = partial.permissionRevoked,
+    internalStorage = partial.internalStorage,
+    filesystemRaw = partial.filesystemRaw,
+    canWriteFlag = partial.canWriteFlag,
+    writeProbeSucceeded = partial.writeProbeSucceeded,
+    freeBytes = partial.freeBytes,
+    totalBytes = partial.totalBytes,
+)
 
-/** A cancelled picker keeps the previous folder. A new URI replaces it because the user picked it. */
-fun adoptPickerOutcome(previous: RememberedDestination?, outcome: PickerOutcome): RememberedDestination? {
-    val uri = outcome.treeUri?.takeIf { it.isNotBlank() } ?: return previous
-    val name = outcome.displayName?.takeIf { it.isNotBlank() } ?: uri
-    return RememberedDestination(uri, name)
-}
+val DRIVE_PRESETS: List<DrivePreset> = listOf(
+    DrivePreset(
+        id = "exfat",
+        label = "exFAT",
+        facts = VolumeFacts(
+            treeUri = "content://com.android.externalstorage.documents/tree/1A2B-3C4D%3A",
+            displayName = "USB exFAT",
+            grantedRead = true,
+            grantedWrite = true,
+            persisted = true,
+            persistable = true,
+            volumePresent = true,
+            permissionRevoked = false,
+            internalStorage = false,
+            filesystemRaw = "exfat",
+            canWriteFlag = true,
+            writeProbeSucceeded = true,
+            freeBytes = 90 * GiB,
+            totalBytes = 128 * GiB,
+        ),
+    ),
+    DrivePreset(
+        id = "fat32",
+        label = "FAT32",
+        facts = VolumeFacts(
+            treeUri = "content://com.android.externalstorage.documents/tree/AAAA-1111%3A",
+            displayName = "USB FAT32",
+            grantedRead = true,
+            grantedWrite = true,
+            persisted = true,
+            persistable = true,
+            volumePresent = true,
+            permissionRevoked = false,
+            internalStorage = false,
+            filesystemRaw = "vfat",
+            canWriteFlag = true,
+            writeProbeSucceeded = true,
+            freeBytes = 20 * GiB,
+            totalBytes = 32 * GiB,
+        ),
+    ),
+    DrivePreset(
+        id = "ntfs",
+        label = "NTFS",
+        facts = VolumeFacts(
+            treeUri = "content://com.android.externalstorage.documents/tree/BBBB-2222%3A",
+            displayName = "USB NTFS",
+            grantedRead = true,
+            grantedWrite = true,
+            persisted = true,
+            persistable = true,
+            volumePresent = true,
+            permissionRevoked = false,
+            internalStorage = false,
+            filesystemRaw = "ntfs",
+            canWriteFlag = true,
+            writeProbeSucceeded = null,
+            freeBytes = 40 * GiB,
+            totalBytes = null,
+        ),
+    ),
+    DrivePreset(
+        id = "readonly",
+        label = "Read-only",
+        facts = VolumeFacts(
+            treeUri = "content://com.android.externalstorage.documents/tree/CCCC-3333%3A",
+            displayName = "USB read-only",
+            grantedRead = true,
+            grantedWrite = true,
+            persisted = true,
+            persistable = true,
+            volumePresent = true,
+            permissionRevoked = false,
+            internalStorage = false,
+            filesystemRaw = "vfat",
+            canWriteFlag = false,
+            writeProbeSucceeded = null,
+            freeBytes = 8 * GiB,
+            totalBytes = null,
+        ),
+    ),
+    DrivePreset(
+        id = "unknown",
+        label = "Unknown",
+        facts = VolumeFacts(
+            treeUri = "content://com.android.externalstorage.documents/tree/DDDD-4444%3A",
+            displayName = "USB unknown",
+            grantedRead = true,
+            grantedWrite = true,
+            persisted = true,
+            persistable = true,
+            volumePresent = true,
+            permissionRevoked = false,
+            internalStorage = false,
+            filesystemRaw = null,
+            canWriteFlag = true,
+            writeProbeSucceeded = null,
+            freeBytes = 64 * GiB,
+            totalBytes = null,
+        ),
+    ),
+    DrivePreset(
+        id = "internal",
+        label = "Phone storage",
+        facts = VolumeFacts(
+            treeUri = "content://com.android.externalstorage.documents/tree/primary%3A",
+            displayName = "Internal storage",
+            grantedRead = true,
+            grantedWrite = true,
+            persisted = true,
+            persistable = true,
+            volumePresent = true,
+            permissionRevoked = false,
+            internalStorage = true,
+            filesystemRaw = "ext4",
+            canWriteFlag = true,
+            writeProbeSucceeded = true,
+            freeBytes = 12 * GiB,
+            totalBytes = null,
+        ),
+    ),
+)
 
-fun missingDestinationMessage(name: String): String {
-    return "$name is not available. Another folder will not be chosen."
-}
+val OTHER_STICK_URI = "content://com.android.externalstorage.documents/tree/EEEE-5555%3A"
+
+val STAGE_RAW = SelectedFileSize("stage", "Stage_raw.mov", 4_600_000_000L)
 
 private fun decideWritability(facts: VolumeFacts, filesystem: FilesystemKind): Writability {
     if (facts.canWriteFlag == false || facts.writeProbeSucceeded == false) {
-        return if (filesystem == FilesystemKind.NTFS && facts.writeProbeSucceeded != true) {
-            Writability.UNSUPPORTED
-        } else {
-            Writability.READ_ONLY
-        }
+        return if (filesystem == FilesystemKind.NTFS && facts.writeProbeSucceeded != true) Writability.UNSUPPORTED else Writability.READ_ONLY
     }
-    if (facts.writeProbeSucceeded == true && facts.canWriteFlag != false) {
-        return Writability.WRITABLE
-    }
+    if (facts.writeProbeSucceeded == true) return Writability.WRITABLE
     return if (filesystem == FilesystemKind.NTFS) Writability.UNSUPPORTED else Writability.UNCONFIRMED
 }
 
-private fun writabilityWarnings(
-    filesystem: FilesystemKind,
-    writability: Writability,
-): List<DestinationWarning> {
-    val warnings = ArrayList<DestinationWarning>()
-    when (writability) {
-        Writability.WRITABLE -> {
-            if (filesystem == FilesystemKind.NTFS) {
-                warnings += DestinationWarning(
+private fun writabilityWarnings(filesystem: FilesystemKind, writability: Writability): List<DestinationWarning> {
+    return when (writability) {
+        Writability.WRITABLE -> if (filesystem == FilesystemKind.NTFS) {
+            listOf(
+                DestinationWarning(
                     DestinationWarningCode.NTFS_WRITE_CONFIRMED,
                     "A write test succeeded. NTFS is still not assumed on the next drive.",
                     blocking = false,
-                )
-            }
+                ),
+            )
+        } else {
+            emptyList()
         }
-        Writability.READ_ONLY -> warnings += DestinationWarning(
-            DestinationWarningCode.READ_ONLY,
-            "This drive is read-only.",
-            blocking = true,
+        Writability.READ_ONLY -> listOf(
+            DestinationWarning(
+                DestinationWarningCode.READ_ONLY,
+                "This drive is read-only.",
+                blocking = true,
+            ),
         )
-        Writability.UNSUPPORTED -> warnings += DestinationWarning(
-            DestinationWarningCode.WRITE_UNCONFIRMED,
-            "NTFS is not assumed to be writable. A write test has not succeeded on this drive.",
-            blocking = true,
+        Writability.UNSUPPORTED -> listOf(
+            DestinationWarning(
+                DestinationWarningCode.WRITE_UNCONFIRMED,
+                "NTFS is not assumed to be writable. A write test has not succeeded on this drive.",
+                blocking = true,
+            ),
         )
-        Writability.UNCONFIRMED -> warnings += DestinationWarning(
-            DestinationWarningCode.WRITE_UNCONFIRMED,
-            "Writability has not been tested. exFAT, FAT32, and NTFS are not assumed to be writable.",
-            blocking = true,
+        Writability.UNCONFIRMED -> listOf(
+            DestinationWarning(
+                DestinationWarningCode.WRITE_UNCONFIRMED,
+                "Writability has not been tested. exFAT, FAT32, and NTFS are not assumed to be writable.",
+                blocking = true,
+            ),
         )
     }
-    return warnings
 }
 
 private fun fileWarnings(filesystem: FilesystemKind, selected: List<SelectedFileSize>): List<DestinationWarning> {
-    val warnings = ArrayList<DestinationWarning>()
+    val warnings = mutableListOf<DestinationWarning>()
     var unknownOnUnknownFs = false
     for (file in selected) {
         val size = file.sizeBytes
-        if (filesystem == FilesystemKind.FAT32) {
-            if (size == null || size < 0) {
-                warnings += DestinationWarning(
-                    DestinationWarningCode.FAT32_SIZE_UNKNOWN,
-                    "${file.fileName} has no size yet. On FAT32 a file over 4 GiB would fail, so it is blocked.",
-                    blocking = true,
-                    fileId = file.id,
-                )
-            } else if (size > FAT32_MAX_FILE_BYTES) {
-                warnings += DestinationWarning(
-                    DestinationWarningCode.FAT32_FILE_TOO_LARGE,
-                    "${file.fileName} is $size bytes. FAT32 cannot store a file over $FAT32_MAX_FILE_BYTES bytes.",
-                    blocking = true,
-                    fileId = file.id,
-                )
+        when (filesystem) {
+            FilesystemKind.FAT32 -> {
+                when {
+                    size == null || size < 0 -> warnings += DestinationWarning(
+                        DestinationWarningCode.FAT32_SIZE_UNKNOWN,
+                        "${file.fileName} has no size yet. On FAT32 a file over 4 GiB would fail, so it is blocked.",
+                        blocking = true,
+                        fileId = file.id,
+                    )
+                    size > FAT32_MAX_FILE_BYTES -> warnings += DestinationWarning(
+                        DestinationWarningCode.FAT32_FILE_TOO_LARGE,
+                        "${file.fileName} is $size bytes. FAT32 cannot store a file over $FAT32_MAX_FILE_BYTES bytes.",
+                        blocking = true,
+                        fileId = file.id,
+                    )
+                }
             }
-        } else if (filesystem == FilesystemKind.UNKNOWN || filesystem == FilesystemKind.OTHER) {
-            if (size != null && size >= FOUR_GIB_BYTES) {
-                warnings += DestinationWarning(
-                    DestinationWarningCode.UNKNOWN_FILESYSTEM_LARGE_FILE,
-                    "The filesystem was not identified. ${file.fileName} is at least 4 GiB, and this drive is not assumed to be exFAT.",
-                    blocking = true,
-                    fileId = file.id,
-                )
-            } else if (size == null || size < 0) {
-                unknownOnUnknownFs = true
+            FilesystemKind.UNKNOWN, FilesystemKind.OTHER -> {
+                when {
+                    size != null && size >= FOUR_GIB_BYTES -> warnings += DestinationWarning(
+                        DestinationWarningCode.UNKNOWN_FILESYSTEM_LARGE_FILE,
+                        "The filesystem was not identified. ${file.fileName} is at least 4 GiB, and this drive is not assumed to be exFAT.",
+                        blocking = true,
+                        fileId = file.id,
+                    )
+                    size == null || size < 0 -> unknownOnUnknownFs = true
+                }
             }
+            else -> {}
         }
     }
     if (unknownOnUnknownFs) {
@@ -429,32 +552,24 @@ private fun fileWarnings(filesystem: FilesystemKind, selected: List<SelectedFile
 }
 
 private fun spaceWarnings(facts: VolumeFacts, selected: List<SelectedFileSize>): List<DestinationWarning> {
-    val warnings = ArrayList<DestinationWarning>()
     val free = facts.freeBytes
     if (free == null || free < 0) {
-        warnings += DestinationWarning(
-            DestinationWarningCode.CAPACITY_UNKNOWN,
-            "Android did not report free space for this folder.",
-            blocking = false,
+        return listOf(
+            DestinationWarning(
+                DestinationWarningCode.CAPACITY_UNKNOWN,
+                "Android did not report free space for this folder.",
+                blocking = false,
+            ),
         )
-        return warnings
     }
     var known = 0L
-    var overflow = false
     var unknown = 0
     for (file in selected) {
         val size = file.sizeBytes
-        if (size == null || size < 0) {
-            unknown += 1
-            continue
-        }
-        if (known > Long.MAX_VALUE - size) {
-            overflow = true
-        } else {
-            known += size
-        }
+        if (size == null || size < 0) unknown += 1 else known += size
     }
-    if (overflow || known > free) {
+    val warnings = mutableListOf<DestinationWarning>()
+    if (known > free) {
         warnings += DestinationWarning(
             DestinationWarningCode.NOT_ENOUGH_SPACE,
             "The selected files need more than the $free bytes this drive reports free.",
@@ -469,12 +584,4 @@ private fun spaceWarnings(facts: VolumeFacts, selected: List<SelectedFileSize>):
         )
     }
     return warnings
-}
-
-private fun unescapeMount(path: String): String {
-    return path
-        .replace("\\040", " ")
-        .replace("\\011", "\t")
-        .replace("\\012", "\n")
-        .replace("\\134", "\\")
 }
