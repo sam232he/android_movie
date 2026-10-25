@@ -19,12 +19,17 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # v4 no longer requests Google's removed legacy `tools` package.
       - uses: android-actions/setup-android@v4
         with:
           packages: platform-tools
 
       - uses: gradle/actions/setup-gradle@v4
+
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses >/dev/null || true
+
+      - name: Point Gradle at the installed SDK
+        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
 
       - name: Install SDK 35
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
