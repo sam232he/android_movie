@@ -152,6 +152,24 @@ fun classifyFilesystem(raw: String?): FilesystemKind {
     }
 }
 
+private fun unescapeMount(value: String): String {
+    val result = StringBuilder(value.length)
+    var index = 0
+    while (index < value.length) {
+        if (value[index] == '\\' && index + 2 < value.length) {
+            val octal = value.substring(index + 1, index + 3)
+            if (octal.all { it in '0'..'7' }) {
+                result.append(octal.toInt(8).toChar())
+                index += 3
+                continue
+            }
+        }
+        result.append(value[index])
+        index += 1
+    }
+    return result.toString()
+}
+
 fun parseMounts(text: String): List<MountEntry> {
     val entries = ArrayList<MountEntry>()
     for (line in text.lineSequence()) {
