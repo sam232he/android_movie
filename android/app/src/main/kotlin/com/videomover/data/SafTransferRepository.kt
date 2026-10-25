@@ -36,11 +36,15 @@ class SafTransferDestination(
 
     override fun find(name: String): String? = root.findFile(name)?.uri?.toString()
 
-    override fun createTemp(name: String): String {
-        if (find(name) != null) throw IllegalStateException("A temporary file with that name already exists.")
-        return root.createFile("application/octet-stream", name)?.uri?.toString()
-            ?: throw IllegalStateException("The USB folder could not create a temporary file.")
-    }
+	override fun createTemp(name: String): String {
+		if (find(name) != null) {
+			throw IllegalStateException("A temporary file with that name already exists.")
+		}
+		// Prefer video MIME so providers behave better on rename/finalize
+		return root.createFile("video/mp4", name)?.uri?.toString()
+			?: root.createFile("application/octet-stream", name)?.uri?.toString()
+			?: throw IllegalStateException("The folder could not create a temporary file.")
+}
 
     override fun openForWrite(uri: String): OutputStream = resolver.openOutputStream(Uri.parse(uri), "w")
         ?: throw IllegalStateException("The USB file could not be opened for writing.")
@@ -48,15 +52,60 @@ class SafTransferDestination(
     override fun openForRead(uri: String): InputStream = resolver.openInputStream(Uri.parse(uri))
         ?: throw IllegalStateException("The USB file could not be opened for verification.")
 
-    override fun renameTemp(uri: String, finalName: String): String {
-        if (find(finalName) != null) throw IllegalStateException("A file named $finalName already exists.")
-        val document = DocumentFile.fromSingleUri(context, Uri.parse(uri))
-            ?: throw IllegalStateException("The temporary USB file is no longer available.")
-        if (!document.renameTo(finalName)) {
-            throw IllegalStateException("The verified temporary file could not be finalized.")
-        }
-        return document.uri.toString()
+override fun renameTemp(uri: String, finalName: String): String {
+    if (find(finalName) != null) {
+        throw IllegalStateException("A file named $finalName already exists.")
     }
+    val document = DocumentFile.fromSingleUri(context, Uri.parse(uri))
+        ?: throw IllegalStateException("The temporary USB file is no longer available.")
+
+    // 1) Preferred: in-place rename
+    if (document.renameTo(finalName)) {
+        // Some providers keep the same URI; some change it — re-resolve by name
+        return root.findFile(finalName)?.uri?.toString()
+            ?: document.uri.toString()
+    }
+
+    // 2) Fallback: DocumentsContract.renameDocument
+    try {
+        val renamed = android.provider.DocumentsContract.renameDocument(
+            resolver,
+            document.uri,
+            finalName,
+        )
+        if (renamed != null) {
+            return renamed.toString()
+        }
+    } catch (_: Exception) {
+        // fall through to copy
+    }
+
+    // 3) Last resort: create final file, copy bytes, delete temp
+    val mime = document.type?.takeIf { it.isNotBlank() } ?: "application/octet-stream"
+    val finalDoc = root.createFile(mime, finalName)
+        ?: throw IllegalStateException(
+            "Rename is unsupported on this folder and a final file could not be created.",
+        )
+    try {
+        resolver.openInputStream(document.uri).use { input ->
+            resolver.openOutputStream(finalDoc.uri, "w").use { output ->
+                if (input == null || output == null) {
+                    throw IllegalStateException("Could not open streams to finalize the file.")
+                }
+                input.copyTo(output)
+            }
+        }
+    } catch (e: Exception) {
+        // Clean up partial final file
+        runCatching { finalDoc.delete() }
+        throw IllegalStateException(
+            "Could not finalize (rename unsupported, copy failed): ${e.message ?: e.javaClass.simpleName}",
+        )
+    }
+    // Remove temp only after successful copy
+    runCatching { document.delete() }
+    return finalDoc.uri.toString()
+}
 
     override fun deleteTemp(uri: String): Boolean =
         DocumentFile.fromSingleUri(context, Uri.parse(uri))?.delete() == true
