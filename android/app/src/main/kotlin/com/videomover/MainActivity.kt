@@ -39,6 +39,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import com.videomover.data.DestinationRepository
 import com.videomover.data.DeviceVideoRepository
 import com.videomover.data.MoveRecordStore
@@ -297,18 +298,33 @@ class MainActivity : ComponentActivity() {
                         confirmButton = {
                             TextButton(onClick = {
                                 outputCollision = null
-                                placeConverted(prompt.recordId, prompt.file, CollisionResolution(CollisionAction.RENAME, suggestedName(prompt.fileName))) { transferMessage = it }
+                                 placeConverted(
+                                     recordId = prompt.recordId,
+                                     file = prompt.file,
+                                     collision = CollisionResolution(CollisionAction.RENAME, suggestedName(prompt.fileName)),
+                                     onMessage = { transferMessage = it },
+                                 )
                             }) { Text("Rename") }
                         },
                         dismissButton = {
                             Row {
                                 TextButton(onClick = {
                                     outputCollision = null
-                                    placeConverted(prompt.recordId, prompt.file, CollisionResolution(CollisionAction.SKIP)) { transferMessage = it }
+                                     placeConverted(
+                                         recordId = prompt.recordId,
+                                         file = prompt.file,
+                                         collision = CollisionResolution(CollisionAction.SKIP),
+                                         onMessage = { transferMessage = it },
+                                     )
                                 }) { Text("Skip") }
                                 TextButton(onClick = {
                                     outputCollision = null
-                                    placeConverted(prompt.recordId, prompt.file, CollisionResolution(CollisionAction.CANCEL)) { transferMessage = it }
+                                     placeConverted(
+                                         recordId = prompt.recordId,
+                                         file = prompt.file,
+                                         collision = CollisionResolution(CollisionAction.CANCEL),
+                                         onMessage = { transferMessage = it },
+                                     )
                                 }) { Text("Cancel") }
                             }
                         },
