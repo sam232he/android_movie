@@ -48,6 +48,10 @@ android {
 }
 
 dependencies {
+    // Media3 1.11.x requires compileSdk 36; the project intentionally builds
+    // against SDK 35 in CI and on the supported Android toolchain.
+    val media3Version = "1.5.1"
+
     implementation(project(":core"))
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.ui:ui")
@@ -64,8 +68,8 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
     kapt("androidx.room:room-compiler:2.6.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
-    implementation("androidx.media3:media3-common:1.11.1")
-    implementation("androidx.media3:media3-transformer:1.11.1")
-    implementation("androidx.media3:media3-effect:1.11.1")
+    implementation("androidx.media3:media3-common:$media3Version")
+    implementation("androidx.media3:media3-transformer:$media3Version")
+    implementation("androidx.media3:media3-effect:$media3Version")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
