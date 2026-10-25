@@ -130,14 +130,6 @@ export function assessDestination(
       message: `${facts.displayName} is not connected. Another destination will not be used.`,
       blocking: true,
     });
-  } else if (facts.internalStorage) {
-    writability = "UNCONFIRMED";
-    warnings.push({
-      code: "INTERNAL_STORAGE",
-      message:
-        "This folder is on internal storage, not a removable drive. It will not be used as the USB destination.",
-      blocking: true,
-    });
   } else if (!facts.grantedWrite) {
     writability = "UNCONFIRMED";
     warnings.push({
@@ -152,7 +144,7 @@ export function assessDestination(
       warnings.push(
         facts.persistable
           ? {
-              code: "PERMISSION_NOT_SAVED",
+              code: "PERMISSION_NOT_PERSISTED",
               message: "Write access is granted for this session and still needs to be saved.",
               blocking: false,
             }
