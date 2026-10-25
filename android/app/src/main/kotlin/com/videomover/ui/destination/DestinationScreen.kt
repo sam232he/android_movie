@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -25,6 +24,7 @@ import com.videomover.model.OutputResolution
 @Composable
 fun DestinationScreen(
     state: DestinationUiState,
+    onBack: () -> Unit,
     onChoose: () -> Unit,
     onForget: () -> Unit,
     onRefresh: () -> Unit,
@@ -42,38 +42,30 @@ fun DestinationScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Destination folder", style = MaterialTheme.typography.headlineSmall)
+        Text("Choose transfer folder", style = MaterialTheme.typography.headlineSmall)
         Text(
-            "Choose a folder on a USB drive or on this phone. If the chosen folder is missing or the permission is revoked, nothing else is used.",
+            "Original videos are copied and verified in this exact folder first. Their converted MP4 versions return to the original source folder.",
             style = MaterialTheme.typography.bodyMedium,
         )
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Button(onClick = onChoose, enabled = !state.checking) {
-                Text("Choose folder")
-            }
+            Button(onClick = onBack, enabled = !state.checking) { Text("Back") }
+            Button(onClick = onChoose, enabled = !state.checking) { Text("Choose folder") }
             if (state.treeUri != null) {
-                Button(onClick = onForget, enabled = !state.checking) {
-                    Text("Forget")
-                }
-                Button(onClick = onRefresh, enabled = !state.checking) {
-                    Text("Check again")
-                }
+                Button(onClick = onForget, enabled = !state.checking) { Text("Forget") }
+                Button(onClick = onRefresh, enabled = !state.checking) { Text("Check again") }
             }
         }
-        if (state.checking) {
-            CircularProgressIndicator()
-        }
+        if (state.checking) CircularProgressIndicator()
         if (state.treeUri == null) {
             Text("No folder chosen.")
         } else {
             Text(state.displayName ?: "Chosen folder", style = MaterialTheme.typography.titleMedium)
-            Text(state.treeUri, style = MaterialTheme.typography.bodySmall)
             Text("Filesystem: ${filesystemLabel(state.filesystem)}")
             Text("Free space: ${formatBytes(state.freeBytes)} of ${formatBytes(state.totalBytes)}")
-            Text(if (state.persisted) "Permission saved on this phone." else "Permission is not saved for next time.")
+            Text(if (state.persisted) "Permission saved on this phone." else "Permission is only available for this session.")
             Text("Selected videos checked: ${state.selectedCount}")
             Text("Status: ${statusLabel(state.status)}")
             Text("Output resolution", style = MaterialTheme.typography.titleMedium)
@@ -91,9 +83,7 @@ fun DestinationScreen(
                 onClick = onMove,
                 enabled = moveEnabled && !moving,
                 modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(if (moving) "Moving…" else "Move next selected")
-            }
+            ) { Text(if (moving) "Preparing" else "Next: review conversion") }
         }
         message?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
         state.assessment.warnings.forEach { warning ->
@@ -104,30 +94,26 @@ fun DestinationScreen(
             )
         }
         Text(
-            "Nothing is moved from this screen. A write test may create and delete an empty file named .videomover-write-probe in the chosen folder.",
+            "A capability check may create and remove an empty .videomover-write-probe file. Existing videos are never overwritten.",
             style = MaterialTheme.typography.bodySmall,
         )
     }
 }
 
-private fun filesystemLabel(kind: FilesystemKind): String {
-    return when (kind) {
-        FilesystemKind.FAT32 -> "FAT32"
-        FilesystemKind.EXFAT -> "exFAT"
-        FilesystemKind.NTFS -> "NTFS"
-        FilesystemKind.EXT4 -> "ext4"
-        FilesystemKind.OTHER -> "Unrecognized"
-        FilesystemKind.UNKNOWN -> "Not reported"
-    }
+private fun filesystemLabel(kind: FilesystemKind): String = when (kind) {
+    FilesystemKind.FAT32 -> "FAT32"
+    FilesystemKind.EXFAT -> "exFAT"
+    FilesystemKind.NTFS -> "NTFS"
+    FilesystemKind.EXT4 -> "ext4"
+    FilesystemKind.OTHER -> "Unrecognized"
+    FilesystemKind.UNKNOWN -> "Not reported"
 }
 
-private fun statusLabel(status: DestinationStatus): String {
-    return when (status) {
-        DestinationStatus.NONE -> "None"
-        DestinationStatus.READY -> "Ready"
-        DestinationStatus.WARNING -> "Ready, with a warning"
-        DestinationStatus.BLOCKED -> "Blocked"
-    }
+private fun statusLabel(status: DestinationStatus): String = when (status) {
+    DestinationStatus.NONE -> "None"
+    DestinationStatus.READY -> "Ready"
+    DestinationStatus.WARNING -> "Ready, with a warning"
+    DestinationStatus.BLOCKED -> "Blocked"
 }
 
 private fun formatBytes(bytes: Long?): String {
@@ -140,10 +126,7 @@ private fun formatBytes(bytes: Long?): String {
         value /= 1024.0
         unit += 1
     }
-    val text = if (value >= 100 || value == kotlin.math.floor(value)) {
-        value.toLong().toString()
-    } else {
-        String.format(java.util.Locale.US, "%.1f", value)
-    }
+    val text = if (value >= 100 || value == kotlin.math.floor(value)) value.toLong().toString()
+    else String.format(java.util.Locale.US, "%.1f", value)
     return "$text ${units[unit]}"
 }

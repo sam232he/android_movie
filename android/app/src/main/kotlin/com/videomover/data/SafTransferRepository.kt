@@ -40,9 +40,7 @@ class SafTransferDestination(
 		if (find(name) != null) {
 			throw IllegalStateException("A temporary file with that name already exists.")
 		}
-		// Prefer video MIME so providers behave better on rename/finalize
-		return root.createFile("video/mp4", name)?.uri?.toString()
-			?: root.createFile("application/octet-stream", name)?.uri?.toString()
+		return root.createFile("application/octet-stream", name)?.uri?.toString()
 			?: throw IllegalStateException("The folder could not create a temporary file.")
 }
 
@@ -58,6 +56,15 @@ override fun renameTemp(uri: String, finalName: String): String {
     }
     val document = DocumentFile.fromSingleUri(context, Uri.parse(uri))
         ?: throw IllegalStateException("The temporary USB file is no longer available.")
+
+    // Use the provider API first: SingleDocumentFile.renameTo is unsupported by
+    // some document providers even when DocumentsContract can rename the document.
+    try {
+        val renamed = android.provider.DocumentsContract.renameDocument(resolver, document.uri, finalName)
+        if (renamed != null) return renamed.toString()
+    } catch (_: Exception) {
+        // Fall through to the compatibility paths below.
+    }
 
     // 1) Preferred: in-place rename
     if (document.renameTo(finalName)) {
@@ -169,10 +176,12 @@ class SafTransferRepository(
         destinationTreeUri: String,
         resolution: OutputResolution = OutputResolution.P480,
         collision: CollisionResolution = CollisionResolution(com.videomover.transfer.CollisionAction.ASK),
+        requestedName: String = item.fileName,
+        existingRecord: MoveFileRecord? = null,
         isCancelled: () -> Boolean = { false },
     ): TransferRun = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
-        val initial = MoveFileRecord(
+        val initial = existingRecord ?: MoveFileRecord(
             id = UUID.randomUUID().toString(),
             batchId = batchId,
             sourceUri = item.uri,
@@ -180,6 +189,7 @@ class SafTransferRepository(
             sourceRelativePath = item.relativePath,
             sourceDataPath = item.sourceDataPath,
             originalFileName = item.fileName,
+            destinationFileName = requestedName,
             externalDestinationTreeUri = destinationTreeUri,
             destinationFileUri = null,
             destinationTempUri = null,
@@ -203,6 +213,7 @@ class SafTransferRepository(
         val result = runCatching {
             VerifiedTransfer(SafTransferDestination(context, Uri.parse(destinationTreeUri))).move(
                 source = source,
+                requestedName = requestedName,
                 collision = collision,
                 isCancelled = isCancelled,
             )

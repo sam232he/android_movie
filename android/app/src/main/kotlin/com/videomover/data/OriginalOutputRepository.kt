@@ -102,7 +102,7 @@ class OriginalOutputRepository(
         name: String,
         collision: CollisionResolution,
     ): OutputPlacementResult {
-        val parent = DocumentFile.fromSingleUri(context, Uri.parse(record.sourceParentDirectoryUri))
+        val parent = DocumentFile.fromTreeUri(context, Uri.parse(record.sourceParentDirectoryUri))
             ?: return OutputPlacementResult.NeedsAttention("The original SAF directory is no longer available.")
         if (parent.findFile(name) != null) return collisionResult(name, collision)
         val tempName = ".videomover-${record.id}.mp4.part"

@@ -19,9 +19,10 @@ class RecoveryCoordinator(private val records: MoveRecordStore) {
                     errorMessage = "Transfer was interrupted. The original was not deleted; inspect the destination before retrying.",
                     updatedAtEpochMs = System.currentTimeMillis(),
                 )
-                // Conversion is safe to restart because source deletion is already recorded and the USB original is never deleted.
+                // New batches convert the source before deletion; legacy rows may have already
+                // deleted their source and must retain their old recovery state.
                 FileState.CONVERTING.name -> record.copy(
-                    state = FileState.SOURCE_DELETED.name,
+                    state = if (record.sourceDeletedAtEpochMs == null) FileState.PENDING.name else FileState.SOURCE_DELETED.name,
                     resumeState = null,
                     attentionReason = null,
                     errorMessage = "Conversion was interrupted and is ready to restart.",

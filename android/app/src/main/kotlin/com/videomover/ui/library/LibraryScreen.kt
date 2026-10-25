@@ -77,6 +77,7 @@ fun LibraryScreen(
     onDeselectAll: () -> Unit,
     onAddFolder: () -> Unit,
     onRequestAccess: () -> Unit,
+    onNext: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -109,6 +110,7 @@ fun LibraryScreen(
                 onDeselectAll = onDeselectAll,
                 onAddFolder = onAddFolder,
                 onRequestAccess = onRequestAccess,
+                onNext = onNext,
             )
         }
     }
@@ -144,6 +146,7 @@ private fun GrantedLibrary(
     onDeselectAll: () -> Unit,
     onAddFolder: () -> Unit,
     onRequestAccess: () -> Unit,
+    onNext: () -> Unit,
 ) {
     if (state.partialAccess) {
         Notice("Only the videos you picked are visible.")
@@ -192,6 +195,12 @@ private fun GrantedLibrary(
         Spacer(Modifier.weight(1f))
         TextButton(onClick = onAddFolder) { Text("Add folder", color = Signal) }
     }
+    Button(
+        onClick = onNext,
+        enabled = state.selection.isNotEmpty(),
+        modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.buttonColors(containerColor = Signal, contentColor = Color(0xFF1A0D07)),
+    ) { Text("Next (${state.selection.size} selected)") }
     Spacer(Modifier.height(8.dp))
     when {
         state.loading && state.items.isEmpty() -> {

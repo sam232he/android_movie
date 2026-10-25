@@ -6,11 +6,11 @@ import kotlin.test.assertEquals
 
 class VideoOutputSizingTest {
     @Test fun landscape480Is854x480() {
-        assertEquals(OutputVideoSize(854, 480, 0.5f), outputVideoSize(SourceVideoInfo(1920, 1080, 0), OutputResolution.P480))
+        assertEquals(OutputVideoSize(854, 480, 480f / 1080f), outputVideoSize(SourceVideoInfo(1920, 1080, 0), OutputResolution.P480))
     }
 
     @Test fun portraitRotationSwapsDisplayOrientation() {
-        assertEquals(OutputVideoSize(480, 854, 0.5f), outputVideoSize(SourceVideoInfo(1920, 1080, 90), OutputResolution.P480))
+        assertEquals(OutputVideoSize(480, 854, 480f / 1080f), outputVideoSize(SourceVideoInfo(1920, 1080, 90), OutputResolution.P480))
     }
 
     @Test fun smallSourceIsNeverUpscaled() {

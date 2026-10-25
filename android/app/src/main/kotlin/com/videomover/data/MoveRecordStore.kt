@@ -27,6 +27,8 @@ data class MoveFileEntity(
     val sourceRelativePath: String?,
     val sourceDataPath: String?,
     val originalFileName: String,
+    val destinationFileName: String?,
+    val plannedOutputName: String?,
     val externalDestinationTreeUri: String,
     val destinationFileUri: String?,
     val destinationTempUri: String?,
@@ -35,6 +37,7 @@ data class MoveFileEntity(
     val destinationChecksumSha256: String?,
     val checksumMatch: Boolean?,
     val outputUri: String?,
+    val progressPercent: Int,
     val state: String,
     val resumeState: String?,
     val errorMessage: String?,
@@ -52,6 +55,8 @@ data class MoveFileEntity(
         sourceRelativePath = sourceRelativePath,
         sourceDataPath = sourceDataPath,
         originalFileName = originalFileName,
+        destinationFileName = destinationFileName,
+        plannedOutputName = plannedOutputName,
         externalDestinationTreeUri = externalDestinationTreeUri,
         destinationFileUri = destinationFileUri,
         destinationTempUri = destinationTempUri,
@@ -61,6 +66,7 @@ data class MoveFileEntity(
         destinationChecksumSha256 = destinationChecksumSha256,
         checksumMatch = checksumMatch,
         outputUri = outputUri,
+        progressPercent = progressPercent,
         state = state,
         resumeState = resumeState,
         errorMessage = errorMessage,
@@ -80,6 +86,8 @@ data class MoveFileEntity(
             sourceRelativePath = record.sourceRelativePath,
             sourceDataPath = record.sourceDataPath,
             originalFileName = record.originalFileName,
+            destinationFileName = record.destinationFileName,
+            plannedOutputName = record.plannedOutputName,
             externalDestinationTreeUri = record.externalDestinationTreeUri,
             destinationFileUri = record.destinationFileUri,
             destinationTempUri = record.destinationTempUri,
@@ -88,6 +96,7 @@ data class MoveFileEntity(
             destinationChecksumSha256 = record.destinationChecksumSha256,
             checksumMatch = record.checksumMatch,
             outputUri = record.outputUri,
+            progressPercent = record.progressPercent,
             state = record.state,
             resumeState = record.resumeState,
             errorMessage = record.errorMessage,
@@ -116,9 +125,12 @@ interface MoveRecordDao {
 
     @Query("SELECT * FROM move_files ORDER BY updatedAtEpochMs DESC")
     fun observeAll(): Flow<List<MoveFileEntity>>
+
+    @Query("SELECT * FROM move_files WHERE batchId = :batchId ORDER BY createdAtEpochMs")
+    fun observeBatch(batchId: String): Flow<List<MoveFileEntity>>
 }
 
-@Database(entities = [MoveFileEntity::class], version = 2, exportSchema = false)
+@Database(entities = [MoveFileEntity::class], version = 4, exportSchema = false)
 abstract class MoveDatabase : RoomDatabase() {
     abstract fun records(): MoveRecordDao
 
@@ -130,12 +142,25 @@ abstract class MoveDatabase : RoomDatabase() {
                 context.applicationContext,
                 MoveDatabase::class.java,
                 "video_mover.db",
-            ).addMigrations(MIGRATION_1_2).build().also { instance = it }
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
         }
 
         private val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
             override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE move_files ADD COLUMN sourceDataPath TEXT")
+            }
+        }
+
+        private val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE move_files ADD COLUMN plannedOutputName TEXT")
+                database.execSQL("ALTER TABLE move_files ADD COLUMN progressPercent INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE move_files ADD COLUMN destinationFileName TEXT")
             }
         }
     }
@@ -153,4 +178,7 @@ class MoveRecordStore(context: Context) {
     suspend fun all(): List<MoveFileRecord> = dao.all().map { it.toRecord() }
 
     fun observeAll(): Flow<List<MoveFileRecord>> = dao.observeAll().map { rows -> rows.map { it.toRecord() } }
+
+    fun observeBatch(batchId: String): Flow<List<MoveFileRecord>> =
+        dao.observeBatch(batchId).map { rows -> rows.map { it.toRecord() } }
 }

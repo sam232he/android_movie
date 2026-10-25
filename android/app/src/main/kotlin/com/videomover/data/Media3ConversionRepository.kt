@@ -35,7 +35,7 @@ data class ConversionRun(
     val outputSize: String? = null,
 )
 
-/** Phase 5 conversion. It never accepts a phone source URI and never deletes the USB original. */
+/** Converts the verified destination copy after the original source has been deleted. */
 @OptIn(UnstableApi::class)
 class Media3ConversionRepository(
     private val context: Context,
@@ -46,17 +46,15 @@ class Media3ConversionRepository(
     suspend fun convert(recordId: String): ConversionRun = conversionMutex.withLock {
         withContext(Dispatchers.IO) {
             val record = records.find(recordId) ?: error("Move record $recordId was not found.")
-            require(record.state == FileState.SOURCE_DELETED.name) {
-                "Conversion is allowed only after SOURCE_DELETED; current state is ${record.state}."
-            }
-            require(record.sourceDeletedAtEpochMs != null) {
-                "Conversion is blocked because source deletion has not been confirmed."
+            require(record.state == FileState.SOURCE_DELETED.name || record.state == FileState.CONVERTING.name) {
+                "Conversion is allowed only after source deletion; current state is ${record.state}."
             }
             val inputUri = requireNotNull(record.destinationFileUri) {
-                "Conversion is blocked because the verified USB file URI is missing."
+                "Conversion is blocked because the verified destination copy is missing."
             }
             val started = record.copy(
                 state = FileState.CONVERTING.name,
+                progressPercent = 10,
                 errorMessage = null,
                 attentionReason = null,
                 updatedAtEpochMs = System.currentTimeMillis(),
@@ -72,6 +70,7 @@ class Media3ConversionRepository(
                 val completed = started.copy(
                     state = FileState.CONVERTED.name,
                     outputUri = output.toURI().toString(),
+                    progressPercent = 70,
                     errorMessage = null,
                     updatedAtEpochMs = System.currentTimeMillis(),
                 )
@@ -83,6 +82,7 @@ class Media3ConversionRepository(
                 val failed = started.copy(
                     state = FileState.FAILED.name,
                     outputUri = null,
+                    progressPercent = 0,
                     errorMessage = "Conversion failed; the verified USB original was kept. ${error.message ?: error.javaClass.simpleName}",
                     updatedAtEpochMs = System.currentTimeMillis(),
                 )

@@ -18,6 +18,10 @@ data class MoveFileRecord(
     /** Legacy MediaStore DATA path, retained for Android 9 and lower output placement. */
     val sourceDataPath: String? = null,
     val originalFileName: String,
+    /** Name reserved for the original copy in the selected destination. */
+    val destinationFileName: String? = null,
+    /** Reserved converted output name when the source folder needs a rename. */
+    val plannedOutputName: String? = null,
     val externalDestinationTreeUri: String,
     val destinationFileUri: String?,
     val destinationTempUri: String?,
@@ -28,6 +32,8 @@ data class MoveFileRecord(
     val checksumMatch: Boolean?,
     /** Converted MP4 in the original directory. Never derived from the USB destination. */
     val outputUri: String?,
+    /** Best-effort per-file progress for the Results screen. */
+    val progressPercent: Int = 0,
     val state: String,
     val resumeState: String?,
     val errorMessage: String?,

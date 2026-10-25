@@ -9,6 +9,7 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Bundle
 import android.os.StatFs
+import android.provider.MediaStore
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,28 +18,26 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -46,17 +45,15 @@ import kotlinx.coroutines.launch
 import com.videomover.data.DestinationRepository
 import com.videomover.data.DeviceVideoRepository
 import com.videomover.data.MoveRecordStore
-import com.videomover.data.RecoveryCoordinator
-import com.videomover.data.SafTransferRepository
-import com.videomover.data.TransferRun
+import com.videomover.data.MoveWorkScheduler
 import com.videomover.destination.SelectedFileSize
-import com.videomover.library.VideoItem
 import com.videomover.library.formatBytes
 import com.videomover.model.OutputResolution
+import com.videomover.model.MoveFileRecord
+import com.videomover.machine.FileState
+import com.videomover.output.nextAvailableName
+import java.util.UUID
 import com.videomover.preflight.estimatePreflight
-import com.videomover.transfer.CollisionAction
-import com.videomover.transfer.CollisionResolution
-import com.videomover.transfer.TransferResult
 import com.videomover.ui.destination.DestinationScreen
 import com.videomover.ui.destination.DestinationViewModel
 import com.videomover.ui.library.LibraryScreen
@@ -73,42 +70,35 @@ class MainActivity : ComponentActivity() {
     private val repository by lazy { DeviceVideoRepository(applicationContext) }
     private val destinations by lazy { DestinationRepository(applicationContext) }
     private val moveRecords by lazy { MoveRecordStore(applicationContext) }
-    private val transfers by lazy { SafTransferRepository(applicationContext, moveRecords) }
-    private val outputs by lazy { com.videomover.data.OriginalOutputRepository(applicationContext, moveRecords) }
-    private val conversions by lazy { com.videomover.data.Media3ConversionRepository(applicationContext, moveRecords) }
-    private var pendingDeleteRecord: com.videomover.model.MoveFileRecord? = null
-    private var pendingDeleteCallback: ((String) -> Unit)? = null
-    private var pendingOutputCollisionCallback: ((OutputCollisionPrompt) -> Unit)? = null
+    private var pendingDeleteRecordIds: List<String> = emptyList()
+    private var pendingDeleteBatchId: String? = null
 
     private val deleteRequest = registerForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult(),
+        ActivityResultContracts.StartIntentSenderForResult(),
     ) { result ->
-        val record = pendingDeleteRecord
-        val callback = pendingDeleteCallback
-        val outputCollisionCallback = pendingOutputCollisionCallback
-        pendingDeleteRecord = null
-        pendingDeleteCallback = null
-        pendingOutputCollisionCallback = null
-        if (record == null) return@registerForActivityResult
-        val deleted = result.resultCode == RESULT_OK
+        val ids = pendingDeleteRecordIds
+        val batchId = pendingDeleteBatchId
+        pendingDeleteRecordIds = emptyList()
+        pendingDeleteBatchId = null
+        if (ids.isEmpty()) return@registerForActivityResult
         lifecycleScope.launch {
-            moveRecords.upsert(
-                record.copy(
-                    state = if (deleted) com.videomover.machine.FileState.SOURCE_DELETED.name else com.videomover.machine.FileState.NEEDS_ATTENTION.name,
-                    sourceDeletedAtEpochMs = if (deleted) System.currentTimeMillis() else null,
-                    attentionReason = if (deleted) null else com.videomover.machine.AttentionReason.DELETE_CONFIRMATION.name,
-                    errorMessage = if (deleted) null else "Android delete confirmation was denied. Both copies were kept.",
+            val approved = result.resultCode == RESULT_OK
+            ids.forEach { id ->
+                val record = moveRecords.find(id) ?: return@forEach
+                moveRecords.upsert(record.copy(
+                    state = if (approved) FileState.SOURCE_DELETED.name else FileState.TRANSFER_VERIFIED.name,
+                    sourceDeletedAtEpochMs = if (approved) System.currentTimeMillis() else null,
+                    deleteDispatched = approved,
+                    progressPercent = if (approved) 45 else record.progressPercent,
+                    resumeState = null,
+                    attentionReason = if (approved) null else record.attentionReason,
+                    errorMessage = if (approved) null else "Deletion was not approved. The source and verified destination copy were kept.",
                     updatedAtEpochMs = System.currentTimeMillis(),
-                ),
-            )
-            if (deleted) {
-                convertRecord(record.id, callback, outputCollisionCallback)
-            } else {
-                callback?.invoke("Delete was denied; both copies were kept.")
+                ))
             }
+            if (approved && batchId != null) MoveWorkScheduler.enqueueBatch(applicationContext, batchId)
         }
     }
-
     private val model: LibraryViewModel by viewModels {
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -171,13 +161,13 @@ class MainActivity : ComponentActivity() {
                 val library by model.uiState.collectAsState()
                 val destination by destinationModel.uiState.collectAsState()
                 val records by remember { moveRecords.observeAll() }.collectAsState(initial = emptyList())
-                var screen by remember { mutableStateOf(AppScreen.LIBRARY) }
+                var screen by rememberSaveable { mutableStateOf(AppScreen.LIBRARY) }
                 var moving by remember { mutableStateOf(false) }
                 var transferMessage by remember { mutableStateOf<String?>(null) }
-                var collision by remember { mutableStateOf<CollisionPrompt?>(null) }
-                var outputCollision by remember { mutableStateOf<OutputCollisionPrompt?>(null) }
                 var resolution by remember { mutableStateOf(OutputResolution.P480) }
                 var summaryVisible by remember { mutableStateOf(false) }
+                var currentBatchId by rememberSaveable { mutableStateOf<String?>(null) }
+                val activeRecords = currentBatchId?.let { id -> records.filter { it.batchId == id } } ?: records
                 val selectedItems = library.items.filter { it.id in library.selection }
                 val selectedSizes = selectedItems.map { SelectedFileSize(it.id, it.fileName, it.sizeBytes) }
                 val preflight = estimatePreflight(
@@ -193,30 +183,7 @@ class MainActivity : ComponentActivity() {
                             .map { SelectedFileSize(it.id, it.fileName, it.sizeBytes) },
                     )
                 }
-                Scaffold(
-                    bottomBar = {
-                        NavigationBar {
-                            NavigationBarItem(
-                                selected = screen == AppScreen.LIBRARY,
-                                onClick = { screen = AppScreen.LIBRARY },
-                                icon = { Text("Lib") },
-                                label = { Text("Library") },
-                            )
-                            NavigationBarItem(
-                                selected = screen == AppScreen.DESTINATION,
-                                onClick = { screen = AppScreen.DESTINATION },
-                                icon = { Text("Dst") },
-                                label = { Text("Destination") },
-                            )
-                            NavigationBarItem(
-                                selected = screen == AppScreen.RESULTS,
-                                onClick = { screen = AppScreen.RESULTS },
-                                icon = { Text("Res") },
-                                label = { Text("Results") },
-                            )
-                        }
-                    },
-                ) { padding ->
+                Scaffold { padding ->
                     Box(
                         modifier = Modifier
                             .padding(padding)
@@ -233,9 +200,11 @@ class MainActivity : ComponentActivity() {
                                 onDeselectAll = model::deselect,
                                 onAddFolder = { folderRequest.launch(null) },
                                 onRequestAccess = { askForVideos() },
+                                onNext = { if (library.selection.isNotEmpty()) screen = AppScreen.DESTINATION },
                             )
                             AppScreen.DESTINATION -> DestinationScreen(
                                 state = destination,
+                                onBack = { screen = AppScreen.LIBRARY },
                                 onChoose = { launchDestinationPicker() },
                                 onForget = destinationModel::forget,
                                 onRefresh = destinationModel::refresh,
@@ -253,21 +222,33 @@ class MainActivity : ComponentActivity() {
                                 moving = moving,
                                 message = transferMessage,
                             )
-                            AppScreen.RESULTS -> ResultsScreen(records)
+                            AppScreen.RESULTS -> ResultsScreen(
+                                activeRecords,
+                                onStartNew = {
+                                    model.deselect()
+                                    currentBatchId = null
+                                    transferMessage = null
+                                    screen = AppScreen.LIBRARY
+                                },
+                                onConfirmDelete = currentBatchId
+                                    ?.takeIf { Build.VERSION.SDK_INT >= Build.VERSION_CODES.R }
+                                    ?.takeIf { activeRecords.any { it.state == FileState.TRANSFER_VERIFIED.name } }
+                                    ?.let { batchId -> { confirmSourceDeletion(batchId) } },
+                            )
                         }
                     }
                 }
                 if (summaryVisible) {
                     AlertDialog(
                         onDismissRequest = { summaryVisible = false },
-                        title = { Text("Review move") },
+                        title = { Text("Review conversion") },
                         text = {
                             Column {
                                 Text("Files: ${preflight.fileCount}")
                                 Text("Source size: ${formatBytes(preflight.selectedBytes)}")
                                 Text("Estimated converted output: ${formatBytes(preflight.estimatedOutputBytes)}")
-                                Text("USB free: ${formatBytes(preflight.usbFreeBytes)}")
-                                Text("Phone free: ${formatBytes(preflight.phoneFreeBytes)}")
+                                Text("Transfer-folder free: ${formatBytes(preflight.usbFreeBytes)}")
+                                Text("Original-folder conversion space: ${formatBytes(preflight.phoneFreeBytes)}")
                                 Text("Resolution: ${resolution.label}")
                                 Text("Destination: ${destination.displayName ?: "not selected"}")
                                 preflight.warnings.forEach { warning ->
@@ -281,103 +262,68 @@ class MainActivity : ComponentActivity() {
                                 onClick = {
                                     val tree = destination.treeUri
                                     if (tree != null) {
-                                        val batchId = "batch-${System.currentTimeMillis()}"
-                                        selectedItems.forEach { item ->
-                                            com.videomover.data.MoveWorkScheduler.enqueue(
-                                                context = applicationContext,
-                                                batchId = batchId,
-                                                item = item,
-                                                destinationTreeUri = tree,
-                                                resolution = resolution,
-                                            )
+                                        lifecycleScope.launch {
+                                            val batchId = "batch-${UUID.randomUUID()}"
+                                            val existingNames = DocumentFile.fromTreeUri(applicationContext, android.net.Uri.parse(tree))
+                                                ?.listFiles()
+                                                ?.mapNotNull { it.name }
+                                                ?.toMutableSet()
+                                                ?: mutableSetOf()
+                                            selectedItems.forEach { item ->
+                                                val preferred = item.fileName
+                                                val outputName = nextAvailableName(preferred) { candidate ->
+                                                    existingNames.any { it.equals(candidate, ignoreCase = true) }
+                                                }
+                                                existingNames += outputName
+                                                val now = System.currentTimeMillis()
+                                                moveRecords.upsert(
+                                                    MoveFileRecord(
+                                                        id = UUID.randomUUID().toString(),
+                                                        batchId = batchId,
+                                                        sourceUri = item.uri,
+                                                        sourceParentDirectoryUri = item.parentDirectoryUri,
+                                                        sourceRelativePath = item.relativePath,
+                                                        sourceDataPath = item.sourceDataPath,
+                                                        originalFileName = item.fileName,
+                                                        destinationFileName = outputName,
+                                                        plannedOutputName = null,
+                                                        externalDestinationTreeUri = tree,
+                                                        destinationFileUri = null,
+                                                        destinationTempUri = null,
+                                                        outputResolution = resolution,
+                                                        sourceChecksumSha256 = null,
+                                                        destinationChecksumSha256 = null,
+                                                        checksumMatch = null,
+                                                        outputUri = null,
+                                                        state = FileState.PENDING.name,
+                                                        resumeState = null,
+                                                        errorMessage = null,
+                                                        attentionReason = null,
+                                                        sourceDeletedAtEpochMs = null,
+                                                        deleteDispatched = false,
+                                                        createdAtEpochMs = now,
+                                                        updatedAtEpochMs = now,
+                                                    ),
+                                                )
+                                            }
+                                            MoveWorkScheduler.enqueueBatch(applicationContext, batchId)
+                                            currentBatchId = batchId
+                                            transferMessage = "${selectedItems.size} file${if (selectedItems.size == 1) "" else "s"} queued to copy into ${destination.displayName ?: "the chosen folder"}."
+                                            summaryVisible = false
+                                            screen = AppScreen.RESULTS
                                         }
-                                        transferMessage = "${selectedItems.size} file${if (selectedItems.size == 1) "" else "s"} queued at ${resolution.label}. Progress and Cancel are available in the notification."
-                                        summaryVisible = false
                                     }
                                 },
-                            ) { Text("Confirm Move") }
+                            ) { Text("Start transfer") }
                         },
                         dismissButton = { TextButton(onClick = { summaryVisible = false }) { Text("Back") } },
                     )
                 }
-                outputCollision?.let { prompt ->
-                    AlertDialog(
-                        onDismissRequest = { outputCollision = null },
-                        title = { Text("Output filename already exists") },
-                        text = { Text("${prompt.fileName} already exists beside the original. Nothing will be overwritten.") },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                outputCollision = null
-                                 placeConverted(
-                                     recordId = prompt.recordId,
-                                     file = prompt.file,
-                                     collision = CollisionResolution(CollisionAction.RENAME, suggestedName(prompt.fileName)),
-                                     onMessage = { transferMessage = it },
-                                 )
-                            }) { Text("Rename") }
-                        },
-                        dismissButton = {
-                            Row {
-                                TextButton(onClick = {
-                                    outputCollision = null
-                                     placeConverted(
-                                         recordId = prompt.recordId,
-                                         file = prompt.file,
-                                         collision = CollisionResolution(CollisionAction.SKIP),
-                                         onMessage = { transferMessage = it },
-                                     )
-                                }) { Text("Skip") }
-                                TextButton(onClick = {
-                                    outputCollision = null
-                                     placeConverted(
-                                         recordId = prompt.recordId,
-                                         file = prompt.file,
-                                         collision = CollisionResolution(CollisionAction.CANCEL),
-                                         onMessage = { transferMessage = it },
-                                     )
-                                }) { Text("Cancel") }
-                            }
-                        },
-                    )
-                }
-                collision?.let { prompt ->
-                    AlertDialog(
-                        onDismissRequest = { collision = null },
-                        title = { Text("Destination filename already exists") },
-                        text = { Text("${prompt.item.fileName} will not be overwritten. Choose what to do with this file.") },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                collision = null
-                                moveOne(
-                                    item = prompt.item,
-                                    treeUri = prompt.treeUri,
-                                    collisionResolution = CollisionResolution(CollisionAction.RENAME, suggestedName(prompt.item.fileName)),
-                                    onMessage = { transferMessage = it },
-                                    onCollision = { collision = it },
-                                    onMoving = { moving = it },
-                                    onOutputCollision = { outputCollision = it },
-                                )
-                            }) { Text("Rename") }
-                        },
-                        dismissButton = {
-                            Row {
-                                TextButton(onClick = {
-                                    collision = null
-                                    moveOne(prompt.item, prompt.treeUri, CollisionResolution(CollisionAction.SKIP), { transferMessage = it }, { collision = it }, { moving = it }, { outputCollision = it })
-                                }) { Text("Skip") }
-                                TextButton(onClick = {
-                                    collision = null
-                                    moveOne(prompt.item, prompt.treeUri, CollisionResolution(CollisionAction.CANCEL), { transferMessage = it }, { collision = it }, { moving = it }, { outputCollision = it })
-                                }) { Text("Cancel") }
-                            }
-                        },
-                    )
-                }
             }
         }
-        lifecycleScope.launch {
-            RecoveryCoordinator(moveRecords).reconcile()
-        }
+        // Do not reconcile blindly here: an Activity recreation can happen while the
+        // foreground batch worker owns a conversion. The worker resumes durable PENDING
+        // records itself, without rewriting a live CONVERTING record.
         askForVideos()
     }
 
@@ -429,98 +375,20 @@ class MainActivity : ComponentActivity() {
         destinationRequest.launch(intent)
     }
 
-    private data class CollisionPrompt(val item: VideoItem, val treeUri: String)
-    private data class OutputCollisionPrompt(val recordId: String, val file: java.io.File, val fileName: String)
-
-    private fun moveOne(
-        item: VideoItem,
-        treeUri: String,
-        collisionResolution: CollisionResolution,
-        onMessage: (String) -> Unit,
-        onCollision: (CollisionPrompt) -> Unit,
-        onMoving: (Boolean) -> Unit,
-        onOutputCollision: (OutputCollisionPrompt) -> Unit = {},
-    ) {
+    private fun confirmSourceDeletion(batchId: String) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
         lifecycleScope.launch {
-            onMoving(true)
-            val run = transfers.moveOne(
-                batchId = "manual-${System.currentTimeMillis()}",
-                item = item,
-                destinationTreeUri = treeUri,
-                resolution = OutputResolution.P480,
-                collision = collisionResolution,
-            )
-            when (val result = run.result) {
-                is TransferResult.Collision -> onCollision(CollisionPrompt(item, treeUri))
-                is TransferResult.Completed -> convertRecord(run.record.id, { onMessage(it) }, onOutputCollision)
-                is TransferResult.NeedsAttention -> {
-                    if (run.deleteIntentSender != null) {
-                        requestDeleteConfirmation(run, onMessage, onOutputCollision)
-                    } else {
-                        onMessage(result.message)
-                    }
-                }
-                TransferResult.Cancelled -> onMessage("${item.fileName} cancelled. Nothing was deleted.")
-                TransferResult.Skipped -> onMessage("${item.fileName} skipped. Nothing was deleted.")
-                is TransferResult.Verified -> onMessage("${item.fileName} transferred and verified.")
+            val records = moveRecords.forBatch(batchId)
+                .filter { it.state == FileState.TRANSFER_VERIFIED.name }
+            val uris = records.mapNotNull { record ->
+                runCatching { android.net.Uri.parse(record.sourceUri) }.getOrNull()
+                    ?.takeIf { it.authority?.startsWith("media") == true }
             }
-            onMoving(false)
-        }
-    }
-
-    private fun convertRecord(
-        recordId: String,
-        onMessage: ((String) -> Unit)? = null,
-        onCollision: ((OutputCollisionPrompt) -> Unit)? = null,
-    ) {
-        lifecycleScope.launch {
-            val conversion = conversions.convert(recordId)
-            val file = conversion.outputFile
-            if (file != null) {
-                placeConverted(conversion.record.id, file, CollisionResolution(CollisionAction.ASK), onMessage, onCollision, conversion.outputSize)
-            } else {
-                onMessage?.invoke(conversion.record.errorMessage ?: "conversion failed; USB original was kept.")
-            }
-        }
-    }
-
-    private fun placeConverted(
-        recordId: String,
-        file: java.io.File,
-        collision: CollisionResolution,
-        onMessage: ((String) -> Unit)? = null,
-        onCollision: ((OutputCollisionPrompt) -> Unit)? = null,
-        outputSize: String? = null,
-    ) {
-        lifecycleScope.launch {
-            when (val result = outputs.place(recordId, file, collision)) {
-                is com.videomover.data.OutputPlacementResult.Placed -> onMessage?.invoke("moved, verified, converted, and saved beside the original (${outputSize ?: "MP4"}).")
-                is com.videomover.data.OutputPlacementResult.Collision -> onCollision?.invoke(OutputCollisionPrompt(recordId, file, result.fileName))
-                com.videomover.data.OutputPlacementResult.Skipped -> onMessage?.invoke("Output skipped; the USB original remains untouched.")
-                com.videomover.data.OutputPlacementResult.Cancelled -> onMessage?.invoke("Output cancelled; the USB original remains untouched.")
-                is com.videomover.data.OutputPlacementResult.NeedsAttention -> onMessage?.invoke(result.message)
-            }
-        }
-    }
-
-    private fun requestDeleteConfirmation(
-        run: TransferRun,
-        onMessage: (String) -> Unit,
-        onOutputCollision: (OutputCollisionPrompt) -> Unit,
-    ) {
-        val sender = run.deleteIntentSender ?: return
-        pendingDeleteRecord = run.record
-        pendingDeleteCallback = onMessage
-        pendingOutputCollisionCallback = onOutputCollision
-        deleteRequest.launch(IntentSenderRequest.Builder(sender).build())
-    }
-
-    private fun suggestedName(original: String): String {
-        val dot = original.lastIndexOf('.')
-        return if (dot > 0) {
-            original.substring(0, dot) + " (1)" + original.substring(dot)
-        } else {
-            "$original (1)"
+            if (uris.isEmpty()) return@launch
+            pendingDeleteRecordIds = records.map { it.id }
+            pendingDeleteBatchId = batchId
+            val request = MediaStore.createDeleteRequest(contentResolver, uris)
+            deleteRequest.launch(IntentSenderRequest.Builder(request.intentSender).build())
         }
     }
 

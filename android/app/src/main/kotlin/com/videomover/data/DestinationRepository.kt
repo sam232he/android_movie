@@ -79,7 +79,11 @@ class DestinationRepository(private val context: Context) {
         val readOnlyMounted = volume?.state == Environment.MEDIA_MOUNTED_READ_ONLY
         val present = volumeIsPresent(volume, doc, grantedRead || grantedWrite)
         val path = volumePath(volume)
-        val filesystem = if (root != null && root != "primary") {
+        val filesystem = if (root == "primary") {
+            // Android exposes primary shared storage through a FUSE layer; treating it as
+            // unknown incorrectly blocks large files even when the chosen subfolder is writable.
+            "f2fs"
+        } else if (root != null) {
             filesystemRawForVolume(readMounts(), path, root)
         } else {
             null
