@@ -46,7 +46,7 @@ class Media3ConversionRepository(
     suspend fun convert(recordId: String): ConversionRun = conversionMutex.withLock {
         withContext(Dispatchers.IO) {
             val record = records.find(recordId) ?: error("Move record $recordId was not found.")
-            require(record.state == FileState.SOURCE_DELETED) {
+            require(record.state == FileState.SOURCE_DELETED.name) {
                 "Conversion is allowed only after SOURCE_DELETED; current state is ${record.state}."
             }
             require(record.sourceDeletedAtEpochMs != null) {
