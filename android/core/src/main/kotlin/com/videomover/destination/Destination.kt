@@ -203,6 +203,29 @@ fun filesystemRawForVolume(mounts: List<MountEntry>, volumePath: String?, uuid: 
     return if (concrete.size == 1) concrete[0] else null
 }
 
+fun shouldPersist(facts: VolumeFacts): Boolean = !facts.persisted && facts.persistable
+
+fun resolveRememberedDestination(
+    remembered: RememberedDestination?,
+    connectedTreeUris: Set<String>,
+): ResolvedDestination {
+    if (remembered == null) return ResolvedDestination.None
+    return if (connectedTreeUris.contains(remembered.treeUri)) {
+        ResolvedDestination.Selected(remembered)
+    } else {
+        ResolvedDestination.Missing(remembered)
+    }
+}
+
+fun adoptPickerOutcome(
+    previous: RememberedDestination?,
+    outcome: PickerOutcome,
+): RememberedDestination? {
+    val treeUri = outcome.treeUri ?: return previous
+    val displayName = outcome.displayName ?: previous?.displayName ?: treeUri
+    return RememberedDestination(treeUri, displayName)
+}
+
 fun assessDestination(facts: VolumeFacts?, selected: List<SelectedFileSize>): DestinationAssessment {
     if (facts == null) {
         val warning = DestinationWarning(
@@ -306,6 +329,15 @@ fun markRevoked(facts: VolumeFacts): VolumeFacts = facts.copy(
 fun destinationUriToUse(remembered: RememberedDestination?, connectedTreeUris: List<String>): String? {
     if (remembered == null) return null
     return connectedTreeUris.firstOrNull { it == remembered.treeUri }
+}
+
+fun destinationUriToUse(resolved: ResolvedDestination?): String? {
+    return when (resolved) {
+        is ResolvedDestination.Selected -> resolved.destination.treeUri
+        is ResolvedDestination.Missing -> null
+        ResolvedDestination.None -> null
+        null -> null
+    }
 }
 
 fun missingDestinationMessage(name: String): String = "$name is not available. Another folder will not be chosen."
